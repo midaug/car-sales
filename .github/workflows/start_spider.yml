@@ -7,8 +7,8 @@ on:
   # Triggers the workflow on push or pull request events but only for the master branch
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
-  # schedule:
-  # - cron: '0 0/1 * * *'
+  schedule:
+  - cron: '0 */8 * * *'
   repository_dispatch:
     types: [start_spider]  
 
@@ -19,8 +19,6 @@ jobs:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
     # Steps represent a sequence of tasks that will be executed as part of the job
-    outputs:
-      SPIDER_DATA_IS_UPDATE: ${{ steps.commit_update_data.outputs.is_update}}
     steps:
       # 输出IP
       - name: IP
@@ -55,6 +53,7 @@ jobs:
       - name: Commit files
         id : commit_update_data
         run: |
+          echo "action start time => `date '+%Y-%m-%d %H:%M:%S'`" >> ./data/log.txt
           git config --local user.email "days0814@gmail.com"
           git config --local user.name "midaug"
           git add .

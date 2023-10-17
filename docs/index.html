@@ -20,7 +20,7 @@
             padding: 3px 5px;
         }
 
-        .from-table>* {
+        .from-table td>* {
             height: 29px;
         }
 
@@ -39,16 +39,24 @@
 
 <body id="body">
     <div class="from-table">
-        <input id="date">
-        <select id="type">
-            <option value="all">全部能源类型</option>
-            <option value="new_energy">新能源</option>
-        </select>
-        <select id="merge">
-            <option value="none">不合并</option>
-            <option value="brand_name">品牌名称</option>
-            <option value="sub_brand_name">厂商</option>
-        </select>
+        <table>
+            <tr>
+                <td><input id="date"></td>
+                <td>
+                    <select id="type">
+                        <option value="all">全部能源类型</option>
+                        <option value="new_energy">新能源</option>
+                    </select>
+                </td>
+                <td>
+                    <select id="merge">
+                        <option value="none">不合并</option>
+                        <option value="brand_name">品牌名称</option>
+                        <option value="sub_brand_name">厂商</option>
+                    </select>
+                </td>
+            </tr>
+        </table>
         <button id="but_search" style="display: none;">查询</button>
     </div>
     <div class="data-body" id="data-body">

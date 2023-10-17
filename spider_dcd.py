@@ -38,7 +38,7 @@ def wFile(str, path):
     file.close()
 
 
-def requestCarData(url, dataPath, dir):
+def requestCarData(url, dataPath, dir, dateStr):
     # 当文件存在是读取文件数据
     if os.path.exists(dataPath):
         try:
@@ -67,6 +67,7 @@ def requestCarData(url, dataPath, dir):
             dataStr = json.dumps(data, ensure_ascii=False)
             mkdir(dir)
             wFile(dataStr, dataPath)
+            wFile(dateStr, data_path + "/last_date.txt")
             return dataStr
         else:
             print('Failed requests error, url={0}, response={1}'.format(url, response))
@@ -79,7 +80,7 @@ def requestCarData(url, dataPath, dir):
 def start(url, dateStr, car_type):
     allCarPath = '{dir}/{date}/{type}.json'.format(dir=data_path, date=dateStr, type=car_type)
     allCarJsPath = '{dir}/{date}/{type}.js'.format(dir=data_path, date=dateStr, type=car_type)
-    carData = requestCarData(url, allCarPath, '{dir}/{date}'.format(dir=data_path, date=dateStr))
+    carData = requestCarData(url, allCarPath, '{dir}/{date}'.format(dir=data_path, date=dateStr), dateStr)
     if not os.path.exists(allCarJsPath) and not carData is None:
         return wFile("window.sessionStorage.setItem('{0}_{1}', '{2}')".format(car_type, dateStr, carData), allCarJsPath)
 

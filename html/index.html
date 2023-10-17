@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>汽车销量</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.2.3/css/bootstrap.min.css" rel="stylesheet"
+        async="async">
+    <link href="https://cdn.jsdelivr.net/npm/gridjs/dist/theme/mermaid.min.css" rel="stylesheet" />
+
+    <link href="https://cdn.jsdelivr.net/npm/zebra_datepicker@2.0.0/dist/css/default/zebra_datepicker.min.css"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jquery-easy-loading@2.0.0-rc.2/src/loading.min.css">
+    <style>
+        th.gridjs-th {
+            padding: 5px 5px;
+        }
+
+        td.gridjs-td {
+            padding: 3px 5px;
+        }
+
+        .from-table>* {
+            height: 29px;
+        }
+
+        .data-body {
+            width: 100%;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body id="body">
+    <div class="from-table">
+        <input id="date">
+        <select id="type">
+            <option value="all">全部能源类型</option>
+            <option value="new_energy">新能源</option>
+        </select>
+        <select id="merge">
+            <option value="none">不合并</option>
+            <option value="brand_name">品牌名称</option>
+            <option value="sub_brand_name">厂商</option>
+        </select>
+        <button id="but_search">查询</button>
+    </div>
+    <div class="data-body" id="data-body">
+        <div id="table"></div>
+    </div>
+
+</body>
+<!-- JavaScript Bundle with Popper -->
+<script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.2.3/js/bootstrap.bundle.min.js"
+    async="async"></script>
+<script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gridjs-jquery@4.0.0/dist/gridjs.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/zebra_datepicker@2.0.0/dist/zebra_datepicker.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery-easy-loading@2.0.0-rc.2/dist/jquery.loading.min.js"></script>
+<script>
+    const loadMax = 30;
+    const vTime = 200;
+    let grid = null;
+
+    const columnObjs = {
+        "brand_name": {
+            id: 'brand_name',
+            name: '品牌名称'
+        }, "sub_brand_name": {
+            id: 'sub_brand_name',
+            name: '厂商'
+        }, "series_name": {
+            id: 'series_name',
+            name: '车型系列名称'
+        }, "count": {
+            id: 'count',
+            name: '销量',
+        }
+    }
+
+    function isValidDate(date) {
+        return date && Object.prototype.toString.call(date) === "[object Date]" && !isNaN(date);
+    }
+    function dateFormat(date) {
+        if (!isValidDate(date)) {
+            return '';
+        }
+        let m = date.getMonth() + 1;
+        return date.getFullYear() + '' + (m > 9 ? '' : '0') + m;
+    }
+    var now = new Date();
+    now.setMonth(now.getMonth() - 1);
+    const dateSelectEnd = dateFormat(now);
+    $('#date').Zebra_DatePicker({
+        format: 'Ym',
+        direction: ['202003', dateSelectEnd],
+        months: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
+    });
+    // now.setMonth(now.getMonth() - 1);
+    $('#date').val(dateFormat(now));
+    $('#type').val('all');
+    $('#merge').val('none');
+
+    function viewData(data, merge) {
+        // console.log("销量数据", data);
+        let tableData = [];
+        let columns = [columnObjs['brand_name'], columnObjs['sub_brand_name'], columnObjs['series_name'], columnObjs['count']];
+        if (merge === 'brand_name' || merge === 'sub_brand_name') {
+            let newData = {};
+            data.order.forEach(id => {
+                const key = data[id][merge];
+                if (newData.hasOwnProperty(key)) {
+                    newData[key]['count'] = newData[key]['count'] + data[id]['count'];
+                } else {
+                    newData[key] = data[id];
+                }
+            });
+            for (const key in newData) {
+                tableData.push(newData[key]);
+            }
+            columns = [columnObjs[merge], columnObjs['count']];
+            if (merge === 'brand_name') {
+                columns = [columnObjs[merge], columnObjs['count']];
+            } else {
+                columns = [columnObjs['brand_name'], columnObjs[merge], columnObjs['count']];
+            }
+        } else {
+            data.order.forEach(id => {
+                tableData.push(data[id]);
+            });
+        }
+        tableData.sort((a, b) => {
+            return a['count'] < b['count'] ? 1 : a['count'] > b['count'] ? -1 : 0;
+        });
+        const config = {
+            columns: columns,
+            sort: true,
+            data: tableData,
+            fixedHeader: true,
+        };
+        if (grid) {
+            grid.updateConfig(config).forceRender();
+        } else {
+            grid = $("div#table").Grid(config);
+        }
+        // console.log(grid);
+    }
+
+    let qwidth = 0;
+    let qheight = 0;
+    function setGridSize() {
+        let width = (window.innerWidth - 2);
+        let height = (window.innerHeight - 52);
+        if (grid) {
+            if (qwidth == width && qheight == height) {
+                console.log("setGridSize... 已设置，请稍等");
+            } else {
+                qwidth = width;
+                qheight = height;
+                console.log("setGridSize...", new Date(), width, height);
+                grid.updateConfig({
+                    width: width + "px",
+                    height: height + "px"
+                }).forceRender();
+            }
+        }
+    }
+    new ResizeObserver(() => setGridSize()).observe(document.getElementById("table"));
+    window.onresize = function () {
+        setGridSize();
+    }
+
+    function downloadData(type, date) {
+        const url = "https://cdn.jsdelivr.net/gh/midaug/car-sales/data/" + date + "/car_" + type + ".js";
+        const sc = document.createElement("script");
+        sc.src = url;
+        document.body.appendChild(sc);
+    }
+
+    function getData(type, date, merge) {
+        $("#body").loading();
+        const key = "car_" + type + "_" + date;
+        downloadData(type, date);
+        let loadNum = 0;
+        function start() {
+            setTimeout(function () {
+                if (!sessionStorage.hasOwnProperty(key)) {
+                    loadNum++;
+                    console.log("数据加载中...", loadNum);
+                    if (loadNum > loadMax) {
+                        $("#body").loading('stop');
+                        alert("网络问题或"+date+"的数据不存在！！！");
+                    } else {
+                        start();
+                    }
+                } else {
+                    $("#body").loading('stop');
+                    viewData(JSON.parse(sessionStorage.getItem(key)), merge);
+                }
+            }, vTime);
+        }
+        start();
+    }
+
+    $("#but_search").click(function () {
+        getData($('#type').val(), $('#date').val(), $('#merge').val());
+    });
+
+    $("#but_search").click();
+</script>
+
+</html>

@@ -58,10 +58,15 @@
 <script src="https://cdn.jsdelivr.net/npm/gridjs-jquery@4.0.0/dist/gridjs.production.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/zebra_datepicker@2.0.0/dist/zebra_datepicker.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jquery-easy-loading@2.0.0-rc.2/dist/jquery.loading.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/midaug/car-sales/data/last_date.js"></script>
 <script>
     const loadMax = 30;
     const vTime = 200;
     let grid = null;
+
+    const last_date = document.createElement("script");
+    last_date.src = "https://cdn.jsdelivr.net/gh/midaug/car-sales/data/last_date.js?" + Math.random();
+    document.body.appendChild(last_date);
 
     const columnObjs = {
         "brand_name": {
@@ -98,7 +103,7 @@
         months: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
     });
     // now.setMonth(now.getMonth() - 1);
-    $('#date').val(dateFormat(now));
+    $('#date').val(sessionStorage.getItem("last_date"));
     $('#type').val('all');
     $('#merge').val('none');
 

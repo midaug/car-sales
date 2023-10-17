@@ -5,11 +5,11 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>汽车销量</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.2.3/css/bootstrap.min.css" rel="stylesheet"
+        async="async">
     <link href="https://cdn.jsdelivr.net/npm/gridjs/dist/theme/mermaid.min.css" rel="stylesheet" />
-
     <link href="https://cdn.jsdelivr.net/npm/zebra_datepicker@2.0.0/dist/css/default/zebra_datepicker.min.css"
         rel="stylesheet">
-
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jquery-easy-loading@2.0.0-rc.2/src/loading.min.css">
     <style>
         th.gridjs-th {
@@ -47,7 +47,7 @@
             <option value="brand_name">品牌名称</option>
             <option value="sub_brand_name">厂商</option>
         </select>
-        <button id="but_search">查询</button>
+        <button id="but_search" style="display: none;">查询</button>
     </div>
     <div class="data-body" id="data-body">
         <div id="table"></div>
@@ -97,15 +97,18 @@
     var now = new Date();
     now.setMonth(now.getMonth() - 1);
     const dateSelectEnd = dateFormat(now);
-    $('#date').Zebra_DatePicker({
+    const datePicker = $('#date').Zebra_DatePicker({
         format: 'Ym',
         direction: ['202003', dateSelectEnd],
-        months: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
+        months: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
+        onSelect: function () {
+            getData($('#type').val(), $('#date').val(), $('#merge').val());
+        }
     });
     // now.setMonth(now.getMonth() - 1);
-    $('#date').val(sessionStorage.getItem("last_date"));
     $('#type').val('all');
     $('#merge').val('none');
+    $('#date').val(sessionStorage.getItem("last_date"));
 
     function viewData(data, merge) {
         // console.log("销量数据", data);
@@ -211,7 +214,12 @@
     $("#but_search").click(function () {
         getData($('#type').val(), $('#date').val(), $('#merge').val());
     });
-
+    $('#type').change(function () {
+        getData($('#type').val(), $('#date').val(), $('#merge').val());
+    });
+    $('#merge').change(function () {
+        getData($('#type').val(), $('#date').val(), $('#merge').val());
+    });
     $("#but_search").click();
 </script>
 

@@ -67,7 +67,7 @@ def requestCarData(url, dataPath, dir, dateStr):
             dataStr = json.dumps(data, ensure_ascii=False)
             mkdir(dir)
             wFile(dataStr, dataPath)
-            wFile(dateStr, data_path + "/last_date.txt")
+            wFile("window.sessionStorage.setItem('last_date','{0}')".format(dateStr), data_path + "/last_date.js")
             return dataStr
         else:
             print('Failed requests error, url={0}, response={1}'.format(url, response))

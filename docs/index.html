@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -28,6 +29,10 @@
         .data-body {
             width: 100%;
             margin-top: 10px;
+        }
+
+        #date {
+            width: 82px;
         }
     </style>
 </head>
@@ -195,7 +200,7 @@
                     console.log("数据加载中...", loadNum);
                     if (loadNum > loadMax) {
                         $("#body").loading('stop');
-                        alert("网络问题或"+date+"的数据不存在！！！");
+                        alert("网络问题或" + date + "的数据不存在！！！");
                     } else {
                         start();
                     }

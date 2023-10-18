@@ -23,7 +23,7 @@ jobs:
           node-version: '16.x'
           registry-url: 'https://registry.npmjs.org'
       # 发布命令
-      - run: npm version ${{ github.event.inputs.tag }}
+      - run: npm version ${{ github.event.inputs.tag }} --no-git-tag-version
       - run: npm publish --tag ${{ github.event.inputs.tag }}
         env:
           # npm_token 就是刚刚填写 token 时取的名字

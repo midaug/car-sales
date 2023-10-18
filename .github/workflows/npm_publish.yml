@@ -2,13 +2,12 @@
 
 name: npm_publish
 
-# 执行脚本的生命周期
+# 暂时只支持手动更新版本号
 on:
   workflow_dispatch:
-  #选择在 push 到 github 时触发工作流
-  push:
-    #分支可以选择多个
-    branches: [main]
+    inputs:
+      tag:   
+        required: true
 
 # 一个 workflow 可以有多个 job
 jobs:
@@ -24,7 +23,7 @@ jobs:
           node-version: '16.x'
           registry-url: 'https://registry.npmjs.org'
       # 发布命令
-      - run: npm publish
+      - run: npm publish --tag ${{ github.event.inputs.tag }}
         env:
           # npm_token 就是刚刚填写 token 时取的名字
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

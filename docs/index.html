@@ -7,10 +7,8 @@
     <title>汽车销量</title>
     <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.2.3/css/bootstrap.min.css" rel="stylesheet"
         async="async">
-    <link href="https://cdn.jsdelivr.net/npm/gridjs/dist/theme/mermaid.min.css" rel="stylesheet" />
-    <link href="https://cdn.jsdelivr.net/npm/zebra_datepicker@2.0.0/dist/css/default/zebra_datepicker.min.css"
-        rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jquery-easy-loading@2.0.0-rc.2/src/loading.min.css">
+    <link href="https://unpkg.com/gridjs@6.0.6/dist/theme/mermaid.min.css" rel="stylesheet" />
+    <link href="https://unpkg.com/zebra_datepicker@2.0.0/dist/css/default/zebra_datepicker.min.css" rel="stylesheet">
     <style>
         th.gridjs-th {
             padding: 5px 5px;
@@ -34,6 +32,31 @@
             width: 88px;
             font-size: 13px;
             height: 29px;
+        }
+
+        .loading-overlay {
+            display: table;
+            opacity: 0.7;
+        }
+
+        .loading-overlay-content {
+            text-transform: uppercase;
+            letter-spacing: 0.4em;
+            font-size: 1.15em;
+            font-weight: bold;
+            text-align: center;
+            display: table-cell;
+            vertical-align: middle;
+        }
+
+        .loading-overlay.loading-theme-light {
+            background-color: #fff;
+            color: #000;
+        }
+
+        .loading-overlay.loading-theme-dark {
+            background-color: #000;
+            color: #fff;
         }
     </style>
 </head>
@@ -66,17 +89,17 @@
 
 </body>
 <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/gridjs-jquery@4.0.0/dist/gridjs.production.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/zebra_datepicker@2.0.0/dist/zebra_datepicker.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jquery-easy-loading@2.0.0-rc.2/dist/jquery.loading.min.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/midaug/car-sales/data/last_date.js"></script>
+<script src="https://unpkg.com/gridjs-jquery@4.0.0/dist/gridjs.production.min.js"></script>
+<script src="https://unpkg.com/zebra_datepicker@2.0.0/dist/zebra_datepicker.min.js"></script>
+<script src="https://unpkg.com/jquery-easy-loading@2.0.0-rc.2/dist/jquery.loading.min.js"></script>
+<script src="https://fastly.jsdelivr.net/gh/midaug/car-sales/data/last_date.js"></script>
 <script>
     const loadMax = 30;
     const vTime = 200;
     let grid = null;
 
     const last_date = document.createElement("script");
-    last_date.src = "https://cdn.jsdelivr.net/gh/midaug/car-sales/data/last_date.js?" + Math.random();
+    last_date.src = "https://fastly.jsdelivr.net/gh/midaug/car-sales/data/last_date.js?" + Math.random();
     document.body.appendChild(last_date);
 
     const columnObjs = {
@@ -191,7 +214,7 @@
     }
 
     function downloadData(type, date) {
-        const url = "https://cdn.jsdelivr.net/gh/midaug/car-sales/data/" + date + "/car_" + type + ".js";
+        const url = "https://fastly.jsdelivr.net/gh/midaug/car-sales/data/" + date + "/car_" + type + ".js";
         const sc = document.createElement("script");
         sc.src = url;
         document.body.appendChild(sc);

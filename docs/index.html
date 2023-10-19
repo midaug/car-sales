@@ -103,7 +103,10 @@
     document.body.appendChild(last_date);
 
     const columnObjs = {
-        "brand_name": {
+        "r_index": {
+            id: 'r_index',
+            name: '排名'
+        }, "brand_name": {
             id: 'brand_name',
             name: '品牌名称'
         }, "sub_brand_name": {
@@ -147,7 +150,7 @@
     function viewData(data, merge) {
         // console.log("销量数据", data);
         let tableData = [];
-        let columns = [columnObjs['brand_name'], columnObjs['sub_brand_name'], columnObjs['series_name'], columnObjs['count']];
+        let columns = [columnObjs['r_index'], columnObjs['brand_name'], columnObjs['sub_brand_name'], columnObjs['series_name'], columnObjs['count']];
         if (merge === 'brand_name' || merge === 'sub_brand_name') {
             let newData = {};
             data.order.forEach(id => {
@@ -161,11 +164,11 @@
             for (const key in newData) {
                 tableData.push(newData[key]);
             }
-            columns = [columnObjs[merge], columnObjs['count']];
+            columns = [columnObjs['r_index'], columnObjs[merge], columnObjs['count']];
             if (merge === 'brand_name') {
-                columns = [columnObjs[merge], columnObjs['count']];
+                columns = [columnObjs['r_index'], columnObjs[merge], columnObjs['count']];
             } else {
-                columns = [columnObjs['brand_name'], columnObjs[merge], columnObjs['count']];
+                columns = [columnObjs['r_index'], columnObjs['brand_name'], columnObjs[merge], columnObjs['count']];
             }
         } else {
             data.order.forEach(id => {
@@ -174,6 +177,10 @@
         }
         tableData.sort((a, b) => {
             return a['count'] < b['count'] ? 1 : a['count'] > b['count'] ? -1 : 0;
+        });
+        let index = 1;
+        tableData.forEach(data => {
+            data['r_index'] = index++;
         });
         const config = {
             columns: columns,

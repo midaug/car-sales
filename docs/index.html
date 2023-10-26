@@ -67,6 +67,12 @@
             <tr>
                 <td><input id="date"></td>
                 <td>
+                    <select id="dateType">
+                        <option value="month">月</option>
+                        <option value="year">年</option>
+                    </select>
+                </td>
+                <td>
                     <select id="type">
                         <option value="all">全部类型</option>
                         <option value="new_energy">新能源</option>
@@ -139,13 +145,14 @@
         direction: ['202003', dateSelectEnd],
         months: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
         onSelect: function () {
-            getData($('#type').val(), $('#date').val(), $('#merge').val());
+            getData($('#type').val(), $('#date').val(), $('#dateType').val(), $('#merge').val());
         }
     });
     // now.setMonth(now.getMonth() - 1);
     $('#type').val('all');
     $('#merge').val('none');
     $('#date').val(sessionStorage.getItem("last_date"));
+    $('#dateType').val('month');
 
     function viewData(data, merge) {
         // console.log("销量数据", data);
@@ -165,11 +172,11 @@
                 tableData.push(newData[key]);
             }
             columns = [columnObjs['r_index'], columnObjs[merge], columnObjs['count']];
-            if (merge === 'brand_name') {
-                columns = [columnObjs['r_index'], columnObjs[merge], columnObjs['count']];
-            } else {
-                columns = [columnObjs['r_index'], columnObjs['brand_name'], columnObjs[merge], columnObjs['count']];
-            }
+            // if (merge === 'brand_name') {
+            //     columns = [columnObjs['r_index'], columnObjs[merge], columnObjs['count']];
+            // } else {
+            //     columns = [columnObjs['r_index'], columnObjs['brand_name'], columnObjs[merge], columnObjs['count']];
+            // }
         } else {
             data.order.forEach(id => {
                 tableData.push(data[id]);
@@ -220,17 +227,22 @@
         setGridSize();
     }
 
-    function downloadData(type, date) {
-        const url = "https://fastly.jsdelivr.net/gh/midaug/car-sales/data/" + date + "/car_" + type + ".js";
+    function downloadData(type, year, month) {
         const sc = document.createElement("script");
-        sc.src = url;
+        if (month === 'all') {
+            sc.src = "https://fastly.jsdelivr.net/gh/midaug/car-sales/data/" + year + "/year_merge-car_" + type + ".js";
+        } else {
+            sc.src = "https://fastly.jsdelivr.net/gh/midaug/car-sales/data/" + year + '/' + month + "/car_" + type + ".js";
+        }
         document.body.appendChild(sc);
     }
 
-    function getData(type, date, merge) {
+    function getData(type, date, dateType, merge) {
         $("#body").loading();
-        const key = "car_" + type + "_" + date;
-        downloadData(type, date);
+        const year = date.substring(0, 4);
+        const month = dateType === 'year' ? 'all' : date.substring(4, 6);
+        const key = dateType === 'year' ? "year_merge-car_" + type + "_" + year : "car_" + type + "_" + date;
+        downloadData(type, year, month);
         let loadNum = 0;
         function start() {
             setTimeout(function () {
@@ -253,13 +265,16 @@
     }
 
     $("#but_search").click(function () {
-        getData($('#type').val(), $('#date').val(), $('#merge').val());
+        getData($('#type').val(), $('#date').val(), $('#dateType').val(), $('#merge').val());
     });
     $('#type').change(function () {
-        getData($('#type').val(), $('#date').val(), $('#merge').val());
+        getData($('#type').val(), $('#date').val(), $('#dateType').val(), $('#merge').val());
     });
     $('#merge').change(function () {
-        getData($('#type').val(), $('#date').val(), $('#merge').val());
+        getData($('#type').val(), $('#date').val(), $('#dateType').val(), $('#merge').val());
+    });
+    $('#dateType').change(function () {
+        getData($('#type').val(), $('#date').val(), $('#dateType').val(), $('#merge').val());
     });
     $("#but_search").click();
 </script>

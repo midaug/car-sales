@@ -78,11 +78,48 @@ def requestCarData(url, dataPath, dir, dateStr):
 
 
 def start(url, dateStr, car_type):
-    allCarPath = '{dir}/{date}/{type}.json'.format(dir=data_path, date=dateStr, type=car_type)
-    allCarJsPath = '{dir}/{date}/{type}.js'.format(dir=data_path, date=dateStr, type=car_type)
-    carData = requestCarData(url, allCarPath, '{dir}/{date}'.format(dir=data_path, date=dateStr), dateStr)
+    fileDir = '{dir}/{year}/{month}'.format(dir=data_path, year=dateStr[:4], month=dateStr[4:6])
+    allCarPath = '{dir}/{type}.json'.format(dir=fileDir, type=car_type)
+    allCarJsPath = '{dir}/{type}.js'.format(dir=fileDir, type=car_type)
+    carData = requestCarData(url, allCarPath, fileDir, dateStr)
     if not os.path.exists(allCarJsPath) and not carData is None:
         return wFile("window.sessionStorage.setItem('{0}_{1}', '{2}')".format(car_type, dateStr, carData), allCarJsPath)
+
+
+def mergeYear(car_type):
+    years = [f for f in os.listdir(data_path) if os.path.isdir(data_path + '/' + f)]
+    for year in years:
+        year_path = data_path + "/" + year
+        allCarPath = '{dir}/year_merge-{type}.json'.format(dir=year_path, type=car_type)
+        allCarJsPath = '{dir}/year_merge-{type}.js'.format(dir=year_path, type=car_type)
+        dataMap = {}
+        months = [year_path + '/' + f for f in os.listdir(year_path) if os.path.isdir(year_path + '/' + f)]
+        for month in months:
+            filePath =  '{dir}/{type}.json'.format(dir=month, type=car_type)
+            if os.path.exists(filePath):
+                try:
+                    f = open(filePath, 'r', encoding="utf8")
+                    cars = json.loads(f.read())
+                    for key in cars:
+                        if 'order' == key:
+                            continue
+                        data = {}
+                        if key in dataMap:
+                            data = dataMap[key]
+                            data['count'] = data['count'] + cars[key]['count']
+                        else:
+                            data = cars[key]
+                        dataMap[key] = data
+                    f.close()
+                except Exception as e: 
+                    print(e)
+                    print('Failed mergeYear error, path={} \n'.format(filePath))
+        dataMap['order'] = [key for key in dataMap]
+        dataStr = json.dumps(dataMap, ensure_ascii=False)
+        mkdir(year_path)
+        wFile(dataStr, allCarPath)
+        if not os.path.exists(allCarJsPath) and not dataStr is None:
+            wFile("window.sessionStorage.setItem('{0}_{1}', '{2}')".format('year_merge-' + car_type, year, dataStr), allCarJsPath)
 
 
 if __name__ == "__main__":
@@ -105,6 +142,8 @@ if __name__ == "__main__":
             start_month = datetime.strftime(start_month_date + relativedelta(months=1), format_str)
             start(car_all_url.format(start_month), start_month, 'car_all')
             start(car_new_energy_url.format(start_month), start_month, 'car_new_energy')
+        mergeYear('car_all')
+        mergeYear('car_new_energy')
         print('Finished')
     except:
         traceback.print_exc()

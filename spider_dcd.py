@@ -72,7 +72,8 @@ def requestCarData(url, dataPath, dir, dateStr):
         else:
             print('Failed requests error, url={0}, response={1}'.format(url, response))
             return None
-    except IOError:
+    except:
+        traceback.print_exc()
         print('Failed requests error, url={} \n'.format(url))
         return None
 

@@ -1,1 +1,1 @@
-window.sessionStorage.setItem('last_date','202310')
+window.sessionStorage.setItem('last_date','202311')

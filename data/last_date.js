@@ -1,1 +1,0 @@
-window.sessionStorage.setItem('last_date','202502')

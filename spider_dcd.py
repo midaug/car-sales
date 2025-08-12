@@ -125,9 +125,9 @@ def mergeYear(car_type):
 
 if __name__ == "__main__":
     # 全部车型url
-    car_all_url = 'https://www.dongchedi.com/motor/pc/car/rank_data?aid=1839&app_name=auto_web_pc&city_name=&count=10000&offset=0&month={0}&new_energy_type=&rank_data_type=11&brand_id=&price=&manufacturer=&outter_detail_type=&nation=0'
+    car_all_url = 'https://www.xxx.com/motor/pc/car/rank_data?aid=1839&app_name=auto_web_pc&city_name=&count=10000&offset=0&month={0}&new_energy_type=&rank_data_type=11&brand_id=&price=&manufacturer=&outter_detail_type=&nation=0'
     # 新能源销量url
-    car_new_energy_url = 'https://www.dongchedi.com/motor/pc/car/rank_data?aid=1839&app_name=auto_web_pc&city_name=&count=10000&offset=0&month={0}&new_energy_type=1%2C2%2C3&rank_data_type=11&brand_id=&price=&manufacturer=&outter_detail_type=&nation=0'
+    car_new_energy_url = 'https://www.xxx.com/motor/pc/car/rank_data?aid=1839&app_name=auto_web_pc&city_name=&count=10000&offset=0&month={0}&new_energy_type=1%2C2%2C3&rank_data_type=11&brand_id=&price=&manufacturer=&outter_detail_type=&nation=0'
     # 开始时间
     start_month = '202002'
     # start_month = '202308'

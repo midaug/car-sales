@@ -1,282 +1,1385 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
 
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>汽车销量</title>
-    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.2.3/css/bootstrap.min.css" rel="stylesheet"
-        async="async">
-    <link href="https://unpkg.com/gridjs@6.0.6/dist/theme/mermaid.min.css" rel="stylesheet" />
-    <link href="https://unpkg.com/zebra_datepicker@2.0.0/dist/css/default/zebra_datepicker.min.css" rel="stylesheet">
+    <meta name="color-scheme" content="light">
+    <title>汽车销量榜</title>
+    <link rel="icon" href="data:,">
     <style>
-        th.gridjs-th {
-            padding: 5px 5px;
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
         }
 
-        td.gridjs-td {
-            padding: 3px 5px;
+        :root {
+            --bg: #f5f7fb;
+            --card: #ffffff;
+            --ink: #0f1b2d;
+            --ink-2: #43536b;
+            --muted: #7b8aa1;
+            --line: #e9eef6;
+            --accent: #2f6bff;
+            --accent-2: #7b4bff;
+            --accent-soft: #eef3ff;
+            --up: #e5484d;
+            --down: #12a150;
+            --radius: 18px;
+            --shadow-sm: 0 1px 2px rgba(15, 27, 45, .06);
+            --shadow: 0 18px 40px -28px rgba(15, 27, 45, .45), 0 2px 6px -2px rgba(15, 27, 45, .06);
         }
 
-        .from-table td>* {
-            height: 29px;
+        html,
+        body {
+            margin: 0;
+        }
+
+        body {
+            min-height: 100vh;
+            background:
+                radial-gradient(900px 420px at 6% -10%, #e6eeff 0%, rgba(230, 238, 255, 0) 62%),
+                radial-gradient(720px 380px at 96% -14%, #f3e9ff 0%, rgba(243, 233, 255, 0) 64%),
+                var(--bg);
+            color: var(--ink);
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .page {
+            max-width: 1220px;
+            margin: 0 auto;
+            padding: 40px 24px 56px;
+        }
+
+        /* ---------- 头部 ---------- */
+        .hero {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 22px;
+        }
+
+        .hero h1 {
+            margin: 0;
+            font-size: 30px;
+            line-height: 1.15;
+            letter-spacing: -.02em;
+            font-weight: 700;
+        }
+
+        .hero h1 em {
+            font-style: normal;
+            background: linear-gradient(96deg, var(--accent), var(--accent-2));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .hero p {
+            margin: 9px 0 0;
+            font-size: 13.5px;
+            color: var(--muted);
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 15px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            background: #fff;
+            box-shadow: var(--shadow-sm);
+            font-size: 13px;
+            color: var(--ink-2);
+            white-space: nowrap;
+        }
+
+        .pill i {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #22c55e;
+            box-shadow: 0 0 0 4px rgba(34, 197, 94, .15);
+        }
+
+        /* ---------- 工具栏 ---------- */
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            padding: 12px 14px;
+            margin-bottom: 18px;
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+        }
+
+        .seg {
+            display: inline-flex;
+            gap: 2px;
+            padding: 3px;
+            background: #f2f5fa;
+            border-radius: 12px;
+        }
+
+        .seg button {
+            border: 0;
+            padding: 8px 15px;
+            border-radius: 9px;
+            background: transparent;
+            color: var(--ink-2);
+            font: inherit;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background .18s, color .18s, box-shadow .18s;
+            white-space: nowrap;
+        }
+
+        .seg button:hover {
+            color: var(--ink);
+        }
+
+        .seg button.active {
+            background: #fff;
+            color: var(--ink);
+            box-shadow: 0 1px 2px rgba(15, 27, 45, .12);
+        }
+
+        .select {
+            appearance: none;
+            -webkit-appearance: none;
+            min-width: 138px;
+            padding: 9px 34px 9px 13px;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            background: #fff url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237b8aa1' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 12px center;
+            color: var(--ink);
+            font: inherit;
+            font-size: 13.5px;
+            cursor: pointer;
+            transition: border-color .18s, box-shadow .18s;
+        }
+
+        .select:hover {
+            border-color: #ccd8e8;
+        }
+
+        .select:focus,
+        .search input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-soft);
+        }
+
+        .search {
+            position: relative;
+        }
+
+        .search svg {
+            position: absolute;
+            top: 50%;
+            left: 12px;
+            transform: translateY(-50%);
+            color: var(--muted);
+            pointer-events: none;
+        }
+
+        .search input {
+            width: 230px;
+            padding: 9px 12px 9px 34px;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            background: #fff;
+            color: var(--ink);
+            font: inherit;
+            font-size: 13.5px;
+            transition: border-color .18s, box-shadow .18s;
+        }
+
+        .search input::placeholder {
+            color: #a6b2c4;
+        }
+
+        .spacer {
+            flex: 1 1 auto;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 9px 15px;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            background: #fff;
+            color: var(--ink-2);
+            font: inherit;
+            font-size: 13.5px;
+            cursor: pointer;
+            transition: border-color .18s, color .18s, background .18s;
+            white-space: nowrap;
+        }
+
+        .btn:hover {
+            border-color: #ccd8e8;
+            background: #fbfcff;
+            color: var(--ink);
+        }
+
+        /* ---------- 指标卡 ---------- */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+
+        .stat {
+            position: relative;
+            padding: 16px 18px 17px;
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            background: var(--card);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+        }
+
+        .stat::after {
+            content: "";
+            position: absolute;
+            inset: 0 0 auto 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent), var(--accent-2));
+            opacity: .55;
+        }
+
+        .stat .label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12.5px;
+            color: var(--muted);
+        }
+
+        .stat .label svg {
+            color: var(--accent);
+            opacity: .8;
+        }
+
+        .stat .value {
+            margin-top: 11px;
+            font-size: 26px;
+            font-weight: 650;
+            letter-spacing: -.02em;
+            line-height: 1.15;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .stat .value.small {
+            font-size: 19px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .stat .sub {
+            margin-top: 5px;
+            font-size: 12px;
+            color: var(--muted);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .stat .track {
+            margin-top: 9px;
+            height: 5px;
+            border-radius: 999px;
+            background: #eef2f8;
+            overflow: hidden;
+        }
+
+        .stat .track i {
+            display: block;
+            height: 100%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #9dbcff, var(--accent));
+            transition: width .5s ease;
+        }
+
+        /* ---------- 表格 ---------- */
+        .card {
+            position: relative;
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .table-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .table-head h2 {
+            margin: 0;
+            font-size: 15px;
+            font-weight: 650;
+        }
+
+        .table-head h2 span {
+            color: var(--muted);
+            font-weight: 500;
+            margin-left: 6px;
             font-size: 13px;
         }
 
-        .data-body {
+        .meta {
+            font-size: 12.5px;
+            color: var(--muted);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .table-wrap {
+            max-height: calc(100vh - 400px);
+            min-height: 260px;
+            overflow: auto;
+        }
+
+        table {
             width: 100%;
-            margin-top: 10px;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 13.5px;
         }
 
-        #date {
-            width: 88px;
-            font-size: 13px;
-            height: 29px;
+        thead th {
+            position: sticky;
+            top: 0;
+            z-index: 3;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, .95);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--line);
+            color: var(--ink-2);
+            font-size: 12.5px;
+            font-weight: 600;
+            text-align: left;
+            white-space: nowrap;
+            user-select: none;
         }
 
-        .loading-overlay {
-            display: table;
-            opacity: 0.7;
+        thead th.sortable {
+            cursor: pointer;
         }
 
-        .loading-overlay-content {
-            text-transform: uppercase;
-            letter-spacing: 0.4em;
-            font-size: 1.15em;
-            font-weight: bold;
-            text-align: center;
-            display: table-cell;
+        thead th.sortable:hover {
+            color: var(--accent);
+        }
+
+        thead th .arrow {
+            margin-left: 5px;
+            font-size: 9px;
+            opacity: .28;
+        }
+
+        thead th.sorted .arrow {
+            opacity: 1;
+            color: var(--accent);
+        }
+
+        tbody td {
+            padding: 11px 16px;
+            border-bottom: 1px solid #f2f5fa;
+            color: var(--ink-2);
             vertical-align: middle;
         }
 
-        .loading-overlay.loading-theme-light {
-            background-color: #fff;
-            color: #000;
+        tbody tr:last-child td {
+            border-bottom: 0;
         }
 
-        .loading-overlay.loading-theme-dark {
-            background-color: #000;
-            color: #fff;
+        tbody tr:hover td {
+            background: #f8faff;
+        }
+
+        .col-rank {
+            width: 74px;
+        }
+
+        .col-brand,
+        .col-sub {
+            white-space: nowrap;
+        }
+
+        .col-trend {
+            width: 96px;
+        }
+
+        .col-share {
+            width: 104px;
+            text-align: right;
+        }
+
+        .col-models {
+            width: 110px;
+            text-align: right;
+        }
+
+        thead th.col-models {
+            text-align: right;
+        }
+
+        .muted-num {
+            font-variant-numeric: tabular-nums;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        thead th.col-share {
+            text-align: right;
+        }
+
+        .share {
+            font-variant-numeric: tabular-nums;
+            color: var(--ink-2);
+        }
+
+        .col-count {
+            width: 190px;
+            text-align: right;
+        }
+
+        thead th.col-count {
+            text-align: right;
+        }
+
+        .rank {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 27px;
+            height: 27px;
+            border-radius: 9px;
+            background: #f3f6fb;
+            color: var(--muted);
+            font-size: 12.5px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .rank.r1 {
+            background: linear-gradient(158deg, #ffd873, #eda200);
+            color: #6d4200;
+            box-shadow: 0 5px 12px -5px rgba(237, 162, 0, .85);
+        }
+
+        .rank.r2 {
+            background: linear-gradient(158deg, #e8eef6, #b4c1d2);
+            color: #46586c;
+            box-shadow: 0 5px 12px -6px rgba(120, 140, 165, .8);
+        }
+
+        .rank.r3 {
+            background: linear-gradient(158deg, #f8caa4, #d68a51);
+            color: #6b3a12;
+            box-shadow: 0 5px 12px -6px rgba(214, 138, 81, .8);
+        }
+
+        .series {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+
+        .thumb {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 46px;
+            height: 33px;
+            flex: none;
+            border-radius: 8px;
+            background: #f2f5fa;
+            color: #a6b2c4;
+            font-size: 12px;
+            overflow: hidden;
+        }
+
+        .thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .series .name {
+            font-weight: 550;
+            color: var(--ink);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .sub-name {
+            margin-left: 10px;
+            font-size: 12.5px;
+            color: var(--muted);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .muted {
+            color: var(--muted);
+        }
+
+        .count {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .count .num {
+            font-weight: 600;
+            color: var(--ink);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .count .track {
+            width: 82px;
+            height: 6px;
+            flex: none;
+            border-radius: 999px;
+            background: #eef2f8;
+            overflow: hidden;
+        }
+
+        .count .bar {
+            display: block;
+            height: 100%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #a9c3ff, var(--accent));
+        }
+
+        .trend {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            font-size: 12.5px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .trend.up {
+            color: var(--up);
+        }
+
+        .trend.down {
+            color: var(--down);
+        }
+
+        .trend.flat {
+            color: #b6c1d0;
+        }
+
+        .trend.new {
+            padding: 2px 7px;
+            border-radius: 6px;
+            background: var(--accent-soft);
+            color: var(--accent);
+            font-size: 11.5px;
+            font-weight: 600;
+        }
+
+        /* ---------- 状态 ---------- */
+        .overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: rgba(255, 255, 255, .74);
+            backdrop-filter: blur(2px);
+            color: var(--ink-2);
+            font-size: 13.5px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .2s;
+        }
+
+        .overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #dfe7f3;
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin .75s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 64px 24px;
+            text-align: center;
+            color: var(--muted);
+            font-size: 13.5px;
+        }
+
+        .empty svg {
+            color: #c3cfdf;
+        }
+
+        .empty b {
+            display: block;
+            color: var(--ink-2);
+            font-size: 14.5px;
+            font-weight: 600;
+        }
+
+        footer {
+            margin-top: 26px;
+            text-align: center;
+            font-size: 12px;
+            color: #9aa7ba;
+            line-height: 1.9;
+        }
+
+        [hidden] {
+            display: none !important;
+        }
+
+        @media (max-width: 980px) {
+            .stats {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .table-wrap {
+                max-height: none;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .page {
+                padding: 26px 16px 40px;
+            }
+
+            .hero h1 {
+                font-size: 23px;
+            }
+
+            .search input {
+                width: 100%;
+            }
+
+            .search {
+                flex: 1 1 100%;
+            }
+
+            .spacer {
+                display: none;
+            }
+
+            .select {
+                flex: 1 1 auto;
+            }
+
+            .col-trend,
+            .col-price,
+            .col-brand,
+            .col-sub {
+                display: none;
+            }
+
+            .col-rank {
+                width: 44px;
+            }
+
+            tbody td,
+            thead th {
+                padding-left: 10px;
+                padding-right: 10px;
+            }
+
+            .col-count {
+                width: 84px;
+            }
+
+            .count .track {
+                display: none;
+            }
+
+            .col-models {
+                width: 78px;
+            }
+
+            .sub-name {
+                display: none;
+            }
         }
     </style>
 </head>
 
-<body id="body">
-    <div class="from-table">
-        <table>
-            <tr>
-                <td><input id="date"></td>
-                <td>
-                    <select id="dateType">
-                        <option value="month">月</option>
-                        <option value="year">年</option>
-                    </select>
-                </td>
-                <td>
-                    <select id="type">
-                        <option value="all">全部类型</option>
-                        <option value="new_energy">新能源</option>
-                    </select>
-                </td>
-                <td>
-                    <select id="merge">
-                        <option value="none">不合并</option>
-                        <option value="brand_name">品牌合并</option>
-                        <option value="sub_brand_name">厂商合并</option>
-                    </select>
-                </td>
-            </tr>
-        </table>
-        <button id="but_search" style="display: none;">查询</button>
+<body>
+    <div class="page">
+        <header class="hero">
+            <div>
+                <h1>汽车销量<em>排行</em></h1>
+                <p>乘用车月度销量数据 · 支持按品牌 / 厂商合并查看</p>
+            </div>
+            <div class="pill"><i></i><span id="updatedAt">数据加载中…</span></div>
+        </header>
+
+        <section class="toolbar">
+            <div class="seg" id="modeSeg">
+                <button type="button" data-value="month" class="active">月</button>
+                <button type="button" data-value="year">年</button>
+            </div>
+            <select class="select" id="dateSel" aria-label="选择时间"></select>
+            <div class="seg" id="typeSeg">
+                <button type="button" data-value="car_all" class="active">全部</button>
+                <button type="button" data-value="car_new_energy">新能源</button>
+            </div>
+            <select class="select" id="mergeSel" aria-label="查看维度">
+                <option value="none">车系明细</option>
+                <option value="brand_name">按品牌合并</option>
+                <option value="sub_brand_name">按厂商合并</option>
+            </select>
+            <span class="spacer"></span>
+            <div class="search">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round">
+                    <circle cx="11" cy="11" r="7"></circle>
+                    <line x1="20" y1="20" x2="16.5" y2="16.5"></line>
+                </svg>
+                <input id="q" type="search" placeholder="搜索品牌 / 厂商 / 车系" autocomplete="off">
+            </div>
+            <button class="btn" id="exportBtn" type="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 3v12"></path>
+                    <path d="m7 11 5 5 5-5"></path>
+                    <path d="M5 21h14"></path>
+                </svg>
+                导出 CSV
+            </button>
+        </section>
+
+        <section class="stats" id="stats"></section>
+
+        <section class="card">
+            <div class="table-head">
+                <h2 id="tableTitle">销量数据<span id="tableSub"></span></h2>
+                <span class="meta" id="tableMeta"></span>
+            </div>
+            <div class="table-wrap" id="tableWrap">
+                <table>
+                    <thead id="thead"></thead>
+                    <tbody id="tbody"></tbody>
+                </table>
+            </div>
+            <div class="empty" id="empty" hidden>
+                <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="17" rx="3"></rect>
+                    <path d="M8 10h8M8 15h5"></path>
+                </svg>
+                <div><b id="emptyTitle">暂无数据</b><span id="emptyDesc">该时间段还没有销量数据</span></div>
+            </div>
+            <div class="overlay" id="overlay">
+                <span class="spinner"></span><span>正在加载数据…</span>
+            </div>
+        </section>
+
+        <footer>
+            数据每月自动更新 · 销量单位为「辆」<br>
+            排名仅供参考，不构成任何购买建议
+        </footer>
     </div>
-    <div class="data-body" id="data-body">
-        <div id="table"></div>
-    </div>
 
-</body>
-<script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
-<script src="https://unpkg.com/gridjs-jquery@4.0.0/dist/gridjs.production.min.js"></script>
-<script src="https://unpkg.com/zebra_datepicker@2.0.0/dist/zebra_datepicker.min.js"></script>
-<script src="https://unpkg.com/jquery-easy-loading@2.0.0-rc.2/dist/jquery.loading.min.js"></script>
-<script src="https://fastly.jsdelivr.net/gh/midaug/car-sales/data/last_date.js"></script>
-<script>
-    const loadMax = 30;
-    const vTime = 200;
-    let grid = null;
+    <script>
+        (function () {
+            'use strict';
 
-    const last_date = document.createElement("script");
-    last_date.src = "https://fastly.jsdelivr.net/gh/midaug/car-sales/data/last_date.js?" + Math.random();
-    document.body.appendChild(last_date);
+            // 数据地址（jsdelivr 双节点兜底）
+            var CDN_LIST = [
+                'https://fastly.jsdelivr.net/gh/midaug/car-sales/data/',
+                'https://cdn.jsdelivr.net/gh/midaug/car-sales/data/'
+            ];
+            var START_MONTH = '202003';
 
-    const columnObjs = {
-        "r_index": {
-            id: 'r_index',
-            name: '排名'
-        }, "brand_name": {
-            id: 'brand_name',
-            name: '品牌'
-        }, "sub_brand_name": {
-            id: 'sub_brand_name',
-            name: '厂商'
-        }, "series_name": {
-            id: 'series_name',
-            name: '车系'
-        }, "count": {
-            id: 'count',
-            name: '销量',
-        }
-    }
+            var state = {
+                lastDate: '',
+                mode: 'month',
+                month: '',
+                year: '',
+                type: 'car_all',
+                merge: 'none',
+                sortKey: 'count',
+                sortDir: 'desc',
+                keyword: '',
+                rows: [],
+                raw: null,
+                token: 0
+            };
 
-    function isValidDate(date) {
-        return date && Object.prototype.toString.call(date) === "[object Date]" && !isNaN(date);
-    }
-    function dateFormat(date) {
-        if (!isValidDate(date)) {
-            return '';
-        }
-        let m = date.getMonth() + 1;
-        return date.getFullYear() + '' + (m > 9 ? '' : '0') + m;
-    }
-    var now = new Date();
-    now.setMonth(now.getMonth() - 1);
-    const dateSelectEnd = dateFormat(now);
-    const datePicker = $('#date').Zebra_DatePicker({
-        format: 'Ym',
-        direction: ['202003', dateSelectEnd],
-        months: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
-        onSelect: function () {
-            getData($('#type').val(), $('#date').val(), $('#dateType').val(), $('#merge').val());
-        }
-    });
-    // now.setMonth(now.getMonth() - 1);
-    $('#type').val('all');
-    $('#merge').val('none');
-    $('#date').val(sessionStorage.getItem("last_date"));
-    $('#dateType').val('month');
+            function $(id) { return document.getElementById(id); }
 
-    function viewData(data, merge) {
-        // console.log("销量数据", data);
-        let tableData = [];
-        let columns = [columnObjs['r_index'], columnObjs['brand_name'], columnObjs['sub_brand_name'], columnObjs['series_name'], columnObjs['count']];
-        if (merge === 'brand_name' || merge === 'sub_brand_name') {
-            let newData = {};
-            data.order.forEach(id => {
-                const key = data[id][merge];
-                if (newData.hasOwnProperty(key)) {
-                    newData[key]['count'] = newData[key]['count'] + data[id]['count'];
-                } else {
-                    newData[key] = data[id];
+            function esc(s) {
+                return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+                });
+            }
+
+            function num(n) { return (Number(n) || 0).toLocaleString('zh-CN'); }
+
+            function ymAdd(ym, delta) {
+                var y = parseInt(ym.slice(0, 4), 10);
+                var m = parseInt(ym.slice(4, 6), 10);
+                var t = y * 12 + (m - 1) + delta;
+                return String(Math.floor(t / 12)) + ('0' + (t % 12 + 1)).slice(-2);
+            }
+
+            function monthText(ym) { return ym.slice(0, 4) + '年' + parseInt(ym.slice(4), 10) + '月'; }
+
+            // ---------- 数据加载 ----------
+            function loadScript(url) {
+                return new Promise(function (resolve, reject) {
+                    var s = document.createElement('script');
+                    s.src = url;
+                    s.async = true;
+                    s.onload = function () { resolve(true); };
+                    s.onerror = function () { reject(new Error('load failed: ' + url)); };
+                    document.head.appendChild(s);
+                });
+            }
+
+            function loadPath(path) {
+                var i = 0;
+                function next() {
+                    if (i >= CDN_LIST.length) return Promise.reject(new Error('all cdn failed'));
+                    return loadScript(CDN_LIST[i++] + path).catch(next);
                 }
-            });
-            for (const key in newData) {
-                tableData.push(newData[key]);
+                return next();
             }
-            columns = [columnObjs['r_index'], columnObjs[merge], columnObjs['count']];
-            // if (merge === 'brand_name') {
-            //     columns = [columnObjs['r_index'], columnObjs[merge], columnObjs['count']];
-            // } else {
-            //     columns = [columnObjs['r_index'], columnObjs['brand_name'], columnObjs[merge], columnObjs['count']];
-            // }
-        } else {
-            data.order.forEach(id => {
-                tableData.push(data[id]);
-            });
-        }
-        tableData.sort((a, b) => {
-            return a['count'] < b['count'] ? 1 : a['count'] > b['count'] ? -1 : 0;
-        });
-        let index = 1;
-        tableData.forEach(data => {
-            data['r_index'] = index++;
-        });
-        const config = {
-            columns: columns,
-            sort: true,
-            data: tableData,
-            fixedHeader: true,
-        };
-        if (grid) {
-            grid.updateConfig(config).forceRender();
-        } else {
-            grid = $("div#table").Grid(config);
-        }
-        // console.log(grid);
-    }
 
-    let qwidth = 0;
-    let qheight = 0;
-    function setGridSize() {
-        let width = (window.innerWidth - 2);
-        let height = (window.innerHeight - 52);
-        if (grid) {
-            if (qwidth == width && qheight == height) {
-                console.log("setGridSize... 已设置，请稍等");
-            } else {
-                qwidth = width;
-                qheight = height;
-                console.log("setGridSize...", new Date(), width, height);
-                grid.updateConfig({
-                    width: width + "px",
-                    height: height + "px"
-                }).forceRender();
+            // 某个月份 car_all 数据的路径
+            function monthPath(ym) {
+                return ym.slice(0, 4) + '/' + ym.slice(4, 6) + '/car_all.js';
             }
-        }
-    }
-    new ResizeObserver(() => setGridSize()).observe(document.getElementById("table"));
-    window.onresize = function () {
-        setGridSize();
-    }
 
-    function downloadData(type, year, month) {
-        const sc = document.createElement("script");
-        if (month === 'all') {
-            sc.src = "https://fastly.jsdelivr.net/gh/midaug/car-sales/data/" + year + "/year_merge-car_" + type + ".js";
-        } else {
-            sc.src = "https://fastly.jsdelivr.net/gh/midaug/car-sales/data/" + year + '/' + month + "/car_" + type + ".js";
-        }
-        document.body.appendChild(sc);
-    }
+            // 尝试加载某月数据，成功返回 true（顺便预热缓存）
+            function tryMonth(ym) {
+                var key = 'car_all_' + ym;
+                function read() {
+                    try { return !!sessionStorage.getItem(key); } catch (e) { return false; }
+                }
+                if (read()) return Promise.resolve(true);
+                return loadPath(monthPath(ym) + '?t=' + Date.now())
+                    .then(read)
+                    .catch(function () { return false; });
+            }
 
-    function getData(type, date, dateType, merge) {
-        $("#body").loading();
-        const year = date.substring(0, 4);
-        const month = dateType === 'year' ? 'all' : date.substring(4, 6);
-        const key = dateType === 'year' ? "year_merge-car_" + type + "_" + year : "car_" + type + "_" + date;
-        downloadData(type, year, month);
-        let loadNum = 0;
-        function start() {
-            setTimeout(function () {
-                if (!sessionStorage.hasOwnProperty(key)) {
-                    loadNum++;
-                    console.log("数据加载中...", loadNum);
-                    if (loadNum > loadMax) {
-                        $("#body").loading('stop');
-                        alert("网络问题或" + date + "的数据不存在！！！");
-                    } else {
-                        start();
+            // CDN 上的 last_date.js 可能滞后，用它给出的月份去校准真实的最新月份
+            function resolveLatest(cdnDate, expected) {
+                if (cdnDate >= expected) return Promise.resolve(cdnDate);
+                var guess = expected;
+                var tries = 0;
+                function step() {
+                    if (tries >= 6) return Promise.resolve(cdnDate);
+                    tries++;
+                    var cur = guess;
+                    return tryMonth(cur).then(function (ok) {
+                        if (ok) return cur;
+                        guess = ymAdd(cur, -1);
+                        return step();
+                    });
+                }
+                return step();
+            }
+
+            function readCache(key) {
+                try {
+                    var v = sessionStorage.getItem(key);
+                    return v ? JSON.parse(v) : null;
+                } catch (e) {
+                    return null;
+                }
+            }
+
+            function loadData(key, path) {
+                var cached = readCache(key);
+                if (cached) return Promise.resolve(cached);
+                return loadPath(path).then(function () {
+                    var data = readCache(key);
+                    if (!data) throw new Error('no data: ' + key);
+                    return data;
+                });
+            }
+
+            // ---------- 下拉选项 ----------
+            function buildDateOptions() {
+                var sel = $('dateSel');
+                var opts = [];
+                if (state.mode === 'month') {
+                    for (var m = state.lastDate; m >= START_MONTH; m = ymAdd(m, -1)) {
+                        opts.push('<option value="' + m + '">' + monthText(m) + '</option>');
                     }
+                    sel.innerHTML = opts.join('');
+                    sel.value = state.month;
                 } else {
-                    $("#body").loading('stop');
-                    viewData(JSON.parse(sessionStorage.getItem(key)), merge);
+                    var y1 = parseInt(state.lastDate.slice(0, 4), 10);
+                    var y0 = parseInt(START_MONTH.slice(0, 4), 10);
+                    for (var y = y1; y >= y0; y--) {
+                        opts.push('<option value="' + y + '">' + y + '年</option>');
+                    }
+                    sel.innerHTML = opts.join('');
+                    sel.value = state.year;
                 }
-            }, vTime);
-        }
-        start();
-    }
+            }
 
-    $("#but_search").click(function () {
-        getData($('#type').val(), $('#date').val(), $('#dateType').val(), $('#merge').val());
-    });
-    $('#type').change(function () {
-        getData($('#type').val(), $('#date').val(), $('#dateType').val(), $('#merge').val());
-    });
-    $('#merge').change(function () {
-        getData($('#type').val(), $('#date').val(), $('#dateType').val(), $('#merge').val());
-    });
-    $('#dateType').change(function () {
-        getData($('#type').val(), $('#date').val(), $('#dateType').val(), $('#merge').val());
-    });
-    $("#but_search").click();
-</script>
+            // ---------- 请求数据 ----------
+            function refresh() {
+                var token = ++state.token;
+                var isYear = state.mode === 'year';
+                var date = isYear ? state.year : state.month;
+                var type = state.type;
+                var key = isYear ? ('year_merge-' + type + '_' + date) : (type + '_' + date);
+                var path = isYear
+                    ? (date + '/year_merge-' + type + '.js')
+                    : (date.slice(0, 4) + '/' + date.slice(4, 6) + '/' + type + '.js');
+
+                setLoading(true);
+                loadData(key, path).then(function (data) {
+                    if (token !== state.token) return;
+                    state.raw = data;
+                    render();
+                }).catch(function () {
+                    if (token !== state.token) return;
+                    state.raw = null;
+                    showEmpty(true, '暂无数据', '「' + (isYear ? date + '年' : monthText(date)) + '」的数据还不存在，试试换个时间');
+                    renderStatsEmpty();
+                    $('thead').innerHTML = '';
+                    $('tbody').innerHTML = '';
+                    $('tableMeta').textContent = '';
+                }).then(function () {
+                    if (token === state.token) setLoading(false);
+                });
+            }
+
+            function setLoading(on) {
+                $('overlay').classList.toggle('show', !!on);
+            }
+
+            function showEmpty(on, title, desc) {
+                $('empty').hidden = !on;
+                $('tableWrap').hidden = !!on;
+                if (title) $('emptyTitle').textContent = title;
+                if (desc) $('emptyDesc').textContent = desc;
+            }
+
+            // ---------- 数据整理 ----------
+            function buildRows(raw, merge) {
+                var list = [];
+                var order = raw.order || [];
+                for (var i = 0; i < order.length; i++) {
+                    var it = raw[order[i]];
+                    if (it && it.series_name) list.push(it);
+                }
+
+                if (merge === 'none') {
+                    return list.map(function (it) {
+                        return {
+                            name: it.series_name,
+                            series: it.series_name,
+                            brand: it.brand_name || '-',
+                            sub: it.sub_brand_name || '-',
+                            count: Number(it.count) || 0,
+                            price: it.price || '',
+                            lastRank: Number(it.last_rank) || 0,
+                            img: it.image || ''
+                        };
+                    });
+                }
+
+                var map = {};
+                list.forEach(function (it) {
+                    var name = it[merge] || '未知';
+                    var c = Number(it.count) || 0;
+                    if (!map[name]) {
+                        map[name] = {
+                            name: name, series: name, brand: it.brand_name || name, sub: it.sub_brand_name || name,
+                            count: 0, models: 0, topModel: '', topCount: -1
+                        };
+                    }
+                    var g = map[name];
+                    g.count += c;
+                    g.models += 1;
+                    if (c > g.topCount) { g.topCount = c; g.topModel = it.series_name; }
+                });
+                return Object.keys(map).map(function (k) { return map[k]; });
+            }
+
+            function render() {
+                var rows = buildRows(state.raw, state.merge);
+                rows.sort(function (a, b) { return b.count - a.count; });
+                rows.forEach(function (r, i) { r.rank = i + 1; });
+                state.rows = rows;
+
+                renderTitle();
+                renderStats();
+                renderHead();
+                renderBody();
+                showEmpty(false);
+            }
+
+            function renderTitle() {
+                var isYear = state.mode === 'year';
+                var label = state.type === 'car_new_energy' ? '新能源' : '全部车型';
+                var sub = '月度榜单';
+                if (isYear) {
+                    var lastMonth = parseInt(state.lastDate.slice(4), 10);
+                    sub = state.year === state.lastDate.slice(0, 4)
+                        ? '1-' + lastMonth + '月累计'
+                        : '全年累计';
+                }
+                $('tableTitle').innerHTML = (isYear ? state.year + '年' : monthText(state.month)) +
+                    ' · ' + label + '销量<span id="tableSub">' + sub + '</span>';
+            }
+
+            function renderStats() {
+                var rows = state.rows;
+                var raw = state.raw || { order: [] };
+                var total = 0, top10 = 0;
+                rows.forEach(function (r) { total += r.count; });
+                rows.slice(0, 10).forEach(function (r) { top10 += r.count; });
+
+                var brands = {};
+                (raw.order || []).forEach(function (k) {
+                    var it = raw[k];
+                    if (it && it.brand_name) brands[it.brand_name] = 1;
+                });
+                var brandCount = Object.keys(brands).length;
+                var share = total ? Math.round(top10 / total * 1000) / 10 : 0;
+                var top = rows[0];
+
+                var labelCount = state.merge === 'brand_name' ? '上榜品牌'
+                    : state.merge === 'sub_brand_name' ? '上榜厂商' : '上榜车系';
+
+                var cards = [
+                    {
+                        label: '累计销量',
+                        icon: '<rect x="3" y="12" width="4" height="9" rx="1"></rect><rect x="10" y="7" width="4" height="14" rx="1"></rect><rect x="17" y="3" width="4" height="18" rx="1"></rect>',
+                        value: '<div class="value">' + num(total) + '</div>',
+                        sub: '辆 · TOP10 占 ' + share + '%'
+                    },
+                    {
+                        label: labelCount,
+                        icon: '<rect x="3" y="3" width="7" height="7" rx="2"></rect><rect x="14" y="3" width="7" height="7" rx="2"></rect><rect x="3" y="14" width="7" height="7" rx="2"></rect><rect x="14" y="14" width="7" height="7" rx="2"></rect>',
+                        value: '<div class="value">' + num(rows.length) + '</div>',
+                        sub: '款 · 覆盖品牌 ' + brandCount + ' 个'
+                    },
+                    {
+                        label: '销量冠军',
+                        icon: '<path d="M8 21h8"></path><path d="M12 17v4"></path><path d="M7 4h10v4a5 5 0 0 1-10 0V4Z"></path><path d="M17 5h3v2a3 3 0 0 1-3 3"></path><path d="M7 5H4v2a3 3 0 0 0 3 3"></path>',
+                        value: '<div class="value small">' + esc(top ? top.name : '—') + '</div>',
+                        sub: top ? num(top.count) + ' 辆' : '暂无数据'
+                    },
+                    {
+                        label: '头部集中度',
+                        icon: '<circle cx="12" cy="12" r="9"></circle><path d="M12 3v9l6.4 6.4"></path>',
+                        value: '<div class="value">' + share + '<span style="font-size:15px;font-weight:600">%</span></div>',
+                        sub: 'TOP10 车系销量占比',
+                        bar: share
+                    }
+                ];
+
+                $('stats').innerHTML = cards.map(function (c) {
+                    return '<div class="stat">' +
+                        '<div class="label">' +
+                        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + c.icon + '</svg>' +
+                        esc(c.label) + '</div>' +
+                        c.value +
+                        (c.bar != null ? '<div class="track"><i style="width:' + Math.min(100, c.bar) + '%"></i></div>' : '') +
+                        '<div class="sub">' + esc(c.sub) + '</div>' +
+                        '</div>';
+                }).join('');
+            }
+
+            function renderStatsEmpty() {
+                $('stats').innerHTML = '';
+            }
+
+            function columns() {
+                if (state.merge !== 'none') {
+                    return [
+                        { key: 'rank', title: '排名', cls: 'col-rank' },
+                        { key: 'name', title: state.merge === 'brand_name' ? '品牌' : '厂商', sort: 'name' },
+                        { key: 'models', title: '在榜车型', sort: 'models', cls: 'col-models' },
+                        { key: 'share', title: '占比', cls: 'col-share' },
+                        { key: 'count', title: '销量', sort: 'count', cls: 'col-count' }
+                    ];
+                }
+                var cols = [
+                    { key: 'rank', title: '排名', cls: 'col-rank' },
+                    { key: 'series', title: '车系', sort: 'series' },
+                    { key: 'brand', title: '品牌', sort: 'brand', cls: 'col-brand' },
+                    { key: 'sub', title: '厂商', sort: 'sub', cls: 'col-sub' },
+                    { key: 'price', title: '指导价', cls: 'col-price' },
+                    { key: 'count', title: '销量', sort: 'count', cls: 'col-count' }
+                ];
+                // 年度数据是月度合并的，没有可比的"上期排名"，不显示排名变化
+                if (state.mode === 'month') {
+                    cols.push({ key: 'trend', title: '排名变化', cls: 'col-trend' });
+                }
+                return cols;
+            }
+
+            function renderHead() {
+                var isNone = state.merge === 'none';
+                var html = '<tr>' + columns().map(function (c) {
+                    var sorted = c.sort && state.sortKey === c.sort;
+                    var arrow = c.sort
+                        ? '<span class="arrow">' + (sorted ? (state.sortDir === 'asc' ? '▲' : '▼') : '↕') + '</span>'
+                        : '';
+                    return '<th class="' + (c.cls || '') + (c.sort ? ' sortable' : '') + (sorted ? ' sorted' : '') + '"' +
+                        (c.sort ? ' data-sort="' + c.sort + '"' : '') + '>' + c.title + arrow + '</th>';
+                }).join('') + '</tr>';
+                $('thead').innerHTML = html;
+
+                Array.prototype.forEach.call($('thead').querySelectorAll('th[data-sort]'), function (th) {
+                    th.addEventListener('click', function () {
+                        var key = th.getAttribute('data-sort');
+                        if (state.sortKey === key) {
+                            state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+                        } else {
+                            state.sortKey = key;
+                            state.sortDir = key === 'count' ? 'desc' : 'asc';
+                        }
+                        renderHead();
+                        renderBody();
+                    });
+                });
+            }
+
+            function visibleRows() {
+                var kw = state.keyword.trim().toLowerCase();
+                var rows = state.rows;
+                if (kw) {
+                    rows = rows.filter(function (r) {
+                        return (r.name || '').toLowerCase().indexOf(kw) > -1
+                            || (r.brand || '').toLowerCase().indexOf(kw) > -1
+                            || (r.sub || '').toLowerCase().indexOf(kw) > -1;
+                    });
+                }
+                var dir = state.sortDir === 'asc' ? 1 : -1;
+                var key = state.sortKey;
+                return rows.slice().sort(function (a, b) {
+                    if (key === 'count' || key === 'models') return ((a[key] || 0) - (b[key] || 0)) * dir;
+                    return String(a[key] || '').localeCompare(String(b[key] || ''), 'zh-CN') * dir;
+                });
+            }
+
+            function trendHtml(r) {
+                if (!r.lastRank) return '<span class="trend new">新上榜</span>';
+                var diff = r.lastRank - r.rank;
+                if (diff > 0) return '<span class="trend up">▲ ' + diff + '</span>';
+                if (diff < 0) return '<span class="trend down">▼ ' + Math.abs(diff) + '</span>';
+                return '<span class="trend flat">—</span>';
+            }
+
+            function thumb(it) {
+                if (!it.img) return '<span class="thumb">' + esc(it.name.slice(0, 1)) + '</span>';
+                var src = it.img.replace('tplv-resize:640:0', 'tplv-resize:120:0');
+                return '<span class="thumb">' + esc(it.name.slice(0, 1)) +
+                    '<img src="' + esc(src) + '" alt="" loading="lazy" decoding="async" onerror="this.remove()">' +
+                    '</span>';
+            }
+
+            function renderBody() {
+                var rows = visibleRows();
+                var max = 1;
+                var total = 0;
+                state.rows.forEach(function (r) {
+                    if (r.count > max) max = r.count;
+                    total += r.count;
+                });
+                var count = state.rows.length;
+
+                var isNone = state.merge === 'none';
+                var showTrend = isNone && state.mode === 'month';
+                $('tbody').innerHTML = rows.map(function (r) {
+                    var rankCls = r.rank <= 3 ? ' r' + r.rank : '';
+                    var tds = '<td><span class="rank' + rankCls + '">' + r.rank + '</span></td>';
+
+                    if (isNone) {
+                        tds += '<td><div class="series">' + thumb(r) + '<span class="name">' + esc(r.series) + '</span></div></td>';
+                        tds += '<td class="col-brand">' + esc(r.brand) + '</td>';
+                        tds += '<td class="col-sub">' + esc(r.sub) + '</td>';
+                        tds += '<td class="col-price">' + (r.price ? esc(r.price) : '<span class="muted">—</span>') + '</td>';
+                    } else {
+                        var share = total ? (r.count / total * 100) : 0;
+                        tds += '<td><span class="series"><span class="name">' + esc(r.name) + '</span>' +
+                            (r.topModel ? '<span class="sub-name">主销 ' + esc(r.topModel) + '</span>' : '') +
+                            '</span></td>';
+                        tds += '<td class="col-models"><span class="muted-num">' + num(r.models) + ' 款</span></td>';
+                        tds += '<td class="col-share"><span class="share">' + share.toFixed(1) + '%</span></td>';
+                    }
+
+                    var pct = Math.max(2, Math.round(r.count / max * 100));
+                    tds += '<td class="col-count"><div class="count"><span class="num">' + num(r.count) + '</span>' +
+                        '<span class="track"><i class="bar" style="width:' + pct + '%"></i></span></div></td>';
+
+                    if (showTrend) tds += '<td class="col-trend">' + trendHtml(r) + '</td>';
+
+                    return '<tr>' + tds + '</tr>';
+                }).join('');
+
+                $('tableMeta').textContent = rows.length === count
+                    ? '共 ' + count + ' 条'
+                    : '筛选出 ' + rows.length + ' / ' + count + ' 条';
+            }
+
+            // ---------- 导出 ----------
+            function exportCsv() {
+                var rows = visibleRows();
+                var isNone = state.merge === 'none';
+                var head = isNone ? ['排名', '车系', '品牌', '厂商', '指导价', '销量']
+                    : ['排名', state.merge === 'brand_name' ? '品牌' : '厂商', '在榜车型', '销量'];
+                var lines = [head.join(',')];
+                rows.forEach(function (r) {
+                    var cells = isNone
+                        ? [r.rank, r.series, r.brand, r.sub, r.price, r.count]
+                        : [r.rank, r.name, r.models, r.count];
+                    lines.push(cells.map(function (v) {
+                        v = String(v == null ? '' : v);
+                        return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+                    }).join(','));
+                });
+
+                var date = state.mode === 'year' ? state.year : state.month;
+                var name = '汽车销量_' + date + '_' + (state.type === 'car_new_energy' ? '新能源' : '全部') + '.csv';
+                var blob = new Blob(['\ufeff' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+                var a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = name;
+                a.click();
+                setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+            }
+
+            // ---------- 事件 ----------
+            function bindSeg(id, key, onChange) {
+                var box = $(id);
+                box.addEventListener('click', function (e) {
+                    var btn = e.target.closest('button[data-value]');
+                    if (!btn) return;
+                    Array.prototype.forEach.call(box.children, function (b) { b.classList.remove('active'); });
+                    btn.classList.add('active');
+                    state[key] = btn.getAttribute('data-value');
+                    onChange();
+                });
+            }
+
+            bindSeg('modeSeg', 'mode', function () {
+                buildDateOptions();
+                $('dateSel').value = state.mode === 'year' ? state.year : state.month;
+                refresh();
+            });
+
+            bindSeg('typeSeg', 'type', refresh);
+
+            $('dateSel').addEventListener('change', function () {
+                if (state.mode === 'year') state.year = this.value;
+                else state.month = this.value;
+                refresh();
+            });
+
+            $('mergeSel').addEventListener('change', function () {
+                state.merge = this.value;
+                if (state.raw) {
+                    state.sortKey = 'count';
+                    state.sortDir = 'desc';
+                    render();
+                }
+            });
+
+            var timer = null;
+            $('q').addEventListener('input', function () {
+                var v = this.value;
+                clearTimeout(timer);
+                timer = setTimeout(function () {
+                    state.keyword = v;
+                    if (state.raw) renderBody();
+                }, 160);
+            });
+
+            $('exportBtn').addEventListener('click', function () {
+                if (!state.rows.length) return;
+                exportCsv();
+            });
+
+            // ---------- 启动 ----------
+            function boot() {
+                var fallback = (function () {
+                    var d = new Date();
+                    d.setDate(1);
+                    d.setMonth(d.getMonth() - 1);
+                    return d.getFullYear() + ('0' + (d.getMonth() + 1)).slice(-2);
+                })();
+
+                loadPath('last_date.js?t=' + Date.now())
+                    .then(function () {
+                        var v = null;
+                        try { v = sessionStorage.getItem('last_date'); } catch (e) { }
+                        return /^\d{6}$/.test(v || '') ? v : fallback;
+                    })
+                    .catch(function () { return fallback; })
+                    .then(function (lastDate) {
+                        if (lastDate < START_MONTH) lastDate = fallback;
+                        return resolveLatest(lastDate, fallback);
+                    })
+                    .then(function (lastDate) {
+                        if (lastDate < START_MONTH) lastDate = fallback;
+                        if (lastDate > fallback) lastDate = fallback;
+                        state.lastDate = lastDate;
+                        state.month = lastDate;
+                        state.year = lastDate.slice(0, 4);
+                        $('updatedAt').textContent = '数据更新至 ' + monthText(lastDate);
+                        buildDateOptions();
+                        refresh();
+                    });
+            }
+
+            boot();
+        })();
+    </script>
+</body>
 
 </html>

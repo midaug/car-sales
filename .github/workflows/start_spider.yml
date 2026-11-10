@@ -62,10 +62,12 @@ jobs:
 
       # 数据有变化才提交，避免每天产生空提交
       - name: Commit files
+        id: commit
         if: always()
         run: |
           if [ -z "$(git status --porcelain)" ]; then
             echo "数据没有变化，跳过提交"
+            echo "pushed=false" >> $GITHUB_OUTPUT
             exit 0
           fi
           echo "action start time => `date '+%Y-%m-%d %H:%M:%S'`" >> ./data/log.txt
@@ -74,3 +76,15 @@ jobs:
           git add .
           git commit -m "`date '+%Y-%m-%d %H:%M:%S'` , spider_dcd.py start"
           git push
+          echo "pushed=true" >> $GITHUB_OUTPUT
+
+      # 推送后刷新 jsDelivr 缓存，页面能马上看到新数据（失败不影响任务结果）
+      - name: Purge jsDelivr cache
+        if: steps.commit.outputs.pushed == 'true'
+        run: |
+          for f in data/last_date.js data/*/year_merge-car_all.js data/*/year_merge-car_new_energy.js; do
+            # 带分支和不带分支两种 URL 形态各自缓存，都刷一遍
+            curl -s -o /dev/null "https://purge.jsdelivr.net/gh/midaug/car-sales@main/${f}" || true
+            curl -s -o /dev/null "https://purge.jsdelivr.net/gh/midaug/car-sales/${f}" || true
+          done
+          echo "jsDelivr 缓存已刷新"

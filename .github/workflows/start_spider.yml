@@ -1,68 +1,76 @@
-# This is a basic workflow to help you get started with Actions
-
 name: start_spider
 
-# Controls when the action will run. 
 on:
-  # Triggers the workflow on push or pull request events but only for the master branch
-  # Allows you to run this workflow manually from the Actions tab
+  # 定时执行：cron 使用 UTC 时间
+  # UTC 01:00 / 13:00 = 北京时间 09:00 / 21:00，即每天两次
+  schedule:
+    - cron: '0 1,13 * * *'
+  # 支持在 Actions 页面手动执行
   workflow_dispatch:
-  # schedule:
-  # - cron: '0 */8 * * *'
   repository_dispatch:
-    types: [start_spider]  
+    types: [start_spider]
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+# 需要写权限，才能把抓取到的数据提交回仓库
+permissions:
+  contents: write
+
+# 同一时间只跑一个，避免两个任务同时提交产生冲突
+concurrency:
+  group: start_spider
+  cancel-in-progress: false
+
 jobs:
   # This workflow contains a single job called "build"
   build:
-    # The type of runner that the job will run on
     runs-on: ubuntu-latest
-    # Steps represent a sequence of tasks that will be executed as part of the job
+    timeout-minutes: 30
     steps:
       # 输出IP
       - name: IP
-        run: sudo curl ifconfig.me
-      # 设置服务器时区为东八区 
+        run: sudo curl -s ifconfig.me
+
+      # 设置服务器时区为东八区
       - name: Set time zone
         run: sudo timedatectl set-timezone 'Asia/Shanghai'
-      
+
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - name: Checkout
-        uses: actions/checkout@master
-        with:
-          ref: ${{ github.event.pull_request.head.ref }}
-      
+        uses: actions/checkout@v4
+
       # 使用python环境
       - name: Set up Python 3.10
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
-          # Semantic version range syntax or exact version of a Python version
           python-version: '3.10'
-          # Optional - x64 or x86 architecture, defaults to x64
           architecture: 'x64'
+
       # 打印pyton版本
       - name: Display Python version
         run: python -c "import sys; print(sys.version)"
 
       - name: install python libs
         run: |
-          pip3 install pipenv
-          pipenv install
+          python -m pip install --upgrade pip
+          pip install requests python-dateutil
+
       # 执行python脚本
       - name: start python
-        run: pipenv run python spider_dcd.py
+        run: python spider_dcd.py
+        env:
+          # 可选：站点域名可以存到 Secrets 里（DCD_BASE_URL），不配置就用脚本里 base64 解码的默认值
+          DCD_BASE_URL: ${{ secrets.DCD_BASE_URL }}
+
+      # 数据有变化才提交，避免每天产生空提交
       - name: Commit files
-        id : commit_update_data
+        if: always()
         run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "数据没有变化，跳过提交"
+            exit 0
+          fi
           echo "action start time => `date '+%Y-%m-%d %H:%M:%S'`" >> ./data/log.txt
           git config --local user.email "days0814@gmail.com"
           git config --local user.name "midaug"
           git add .
           git commit -m "`date '+%Y-%m-%d %H:%M:%S'` , spider_dcd.py start"
-      # 推送到github仓库
-      - name: Push changes
-        uses: ad-m/github-push-action@master
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ github.ref }} 
+          git push

@@ -51,6 +51,12 @@ page_size = 100
 # 翻页上限，防止接口异常时死循环（100 页 = 1 万条）
 max_offset = page_size * 100
 
+# 能源类型：接口用 new_energy_type 区分，1=纯电 2=插混 3=增程
+energy_types = {'1': 1, '2': 2, '3': 3}
+energy_url = api_url + ('?aid=1839&app_name=auto_web_pc&city_name=&count={count}&offset={offset}'
+                        '&month={month}&new_energy_type={net}&rank_data_type=11&brand_id=&price='
+                        '&manufacturer=&outter_detail_type=&nation=0')
+
 
 def replaceStr(s=''):
     return s.replace(' ', '').replace(',', '')
@@ -165,6 +171,53 @@ def start(url, dateStr, car_type):
     return True
 
 
+def requestEnergyMap(dateStr, dir):
+    """抓取一个月的能源类型映射 {series_id: 1|2|3}，纯电/插混/增程分开取。
+    只存 id 和类型，一个月大约几 KB。返回 (dataStr, created)"""
+    dataPath = '{dir}/energy.json'.format(dir=dir)
+    if os.path.exists(dataPath):
+        dataStr = rFile(dataPath)
+        if dataStr and dataStr.strip():
+            print('info dataPath exists: {0}'.format(dataPath))
+            return dataStr, False
+        print('warn empty data file, re-download: {0}'.format(dataPath))
+
+    result = {}
+    for net, net_value in energy_types.items():
+        offset = 0
+        while offset <= max_offset:
+            carList = requestPage(energy_url.format(month=dateStr, offset=offset, count=page_size, net=net), dateStr)
+            if carList is None:
+                # 中途失败整月放弃，避免存半份映射
+                return None, False
+            for car in carList:
+                series_id = car.get('series_id')
+                if series_id is not None:
+                    result[str(series_id)] = net_value
+            if len(carList) < page_size:
+                break
+            offset += page_size
+
+    dataStr = json.dumps(result, ensure_ascii=False, sort_keys=True)
+    mkdir(dir)
+    wFile(dataStr, dataPath)
+    print('info energy month={0} 共 {1} 条'.format(dateStr, len(result)))
+    return dataStr, True
+
+
+def startEnergy(dateStr):
+    """抓取一个月的能源类型映射，成功返回 True"""
+    fileDir = '{dir}/{year}/{month}'.format(dir=data_path, year=dateStr[:4], month=dateStr[4:6])
+    jsonPath = '{0}/energy.json'.format(fileDir)
+    jsPath = '{0}/energy.js'.format(fileDir)
+    dataStr, created = requestEnergyMap(dateStr, fileDir)
+    if dataStr is None:
+        return False
+    if created or not os.path.exists(jsPath):
+        wFile("window.sessionStorage.setItem('energy_{0}', '{1}')".format(dateStr, dataStr), jsPath)
+    return True
+
+
 def mergeYear(car_type):
     """按年合并，内容和现有文件一致时不重写，避免产生无意义的 git 变更"""
     years = sorted([f for f in os.listdir(data_path) if os.path.isdir(data_path + '/' + f)])
@@ -200,6 +253,37 @@ def mergeYear(car_type):
         jsStr = "window.sessionStorage.setItem('{0}_{1}', '{2}')".format('year_merge-' + car_type, year, dataStr)
         if rFile(allCarJsPath) != jsStr:
             wFile(jsStr, allCarJsPath)
+
+
+def mergeYearEnergy():
+    """把每月 energy.json 合并成年度映射，内容没变不重写"""
+    years = sorted([f for f in os.listdir(data_path) if os.path.isdir(data_path + '/' + f)])
+    for year in years:
+        year_path = data_path + "/" + year
+        jsonPath = '{0}/year_merge-energy.json'.format(year_path)
+        jsPath = '{0}/year_merge-energy.js'.format(year_path)
+        merged = {}
+        months = sorted([year_path + '/' + f for f in os.listdir(year_path) if os.path.isdir(year_path + '/' + f)])
+        for month in months:
+            filePath = '{0}/energy.json'.format(month)
+            if not os.path.exists(filePath):
+                continue
+            try:
+                monthMap = json.loads(rFile(filePath))
+                if isinstance(monthMap, dict):
+                    merged.update(monthMap)
+            except Exception as e:
+                print('Failed mergeYearEnergy error, path={0} , {1}: {2}'.format(filePath, type(e).__name__, e))
+        if not merged:
+            continue
+        dataStr = json.dumps(merged, ensure_ascii=False, sort_keys=True)
+        mkdir(year_path)
+        if rFile(jsonPath) != dataStr:
+            wFile(dataStr, jsonPath)
+            print('info mergeYearEnergy updated: {0}'.format(jsonPath))
+        jsStr = "window.sessionStorage.setItem('year_merge-energy_{0}', '{1}')".format(year, dataStr)
+        if rFile(jsPath) != jsStr:
+            wFile(jsStr, jsPath)
 
 
 def writeLastDate():
@@ -249,9 +333,16 @@ if __name__ == "__main__":
                     success += 1
                 else:
                     failed.append('{0}/{1}'.format(car_type, month))
+            # 能源类型映射（纯电/插混/增程），只存 series_id -> 类型，体积很小
+            total += 1
+            if startEnergy(month):
+                success += 1
+            else:
+                failed.append('energy/{0}'.format(month))
             month = datetime.strftime(datetime.strptime(month, format_str) + relativedelta(months=1), format_str)
         mergeYear('car_all')
         mergeYear('car_new_energy')
+        mergeYearEnergy()
         writeLastDate()
         print('Finished, {0}/{1} success'.format(success, total))
     except Exception:

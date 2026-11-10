@@ -566,6 +566,15 @@
             text-align: right;
         }
 
+        .col-brands {
+            width: 104px;
+            text-align: right;
+        }
+
+        thead th.col-brands {
+            text-align: right;
+        }
+
         .muted-num {
             font-variant-numeric: tabular-nums;
             color: var(--muted);
@@ -820,6 +829,27 @@
             .table-wrap {
                 max-height: none;
             }
+
+            /* 集团维度列较多，平板宽度下收紧数值列 */
+            body.merge-group .col-share {
+                display: none;
+            }
+
+            body.merge-group .col-brands {
+                width: 88px;
+            }
+
+            body.merge-group .col-models {
+                width: 84px;
+            }
+
+            body.merge-group .col-count {
+                width: 150px;
+            }
+
+            body.merge-group .count .track {
+                display: none;
+            }
         }
 
         @media (max-width: 720px) {
@@ -858,6 +888,16 @@
                 width: 44px;
             }
 
+            /* 集团维度列更多，移动端只保留排名 / 集团 / 品牌数 / 销量 */
+            body.merge-group .col-models,
+            body.merge-group .col-share {
+                display: none;
+            }
+
+            body.merge-group .col-brands {
+                width: 76px;
+            }
+
             tbody td,
             thead th {
                 padding-left: 10px;
@@ -892,7 +932,7 @@
         <header class="hero">
             <div>
                 <h1>汽车销量<em>排行</em></h1>
-                <p>乘用车月度销量数据 · 支持按品牌 / 厂商合并查看</p>
+                <p>乘用车月度销量数据 · 支持车系 / 厂商 / 品牌 / 集团维度查看</p>
             </div>
             <div class="pill"><i></i><span id="updatedAt">数据加载中…</span></div>
         </header>
@@ -925,8 +965,9 @@
             </div>
             <select class="select" id="mergeSel" aria-label="查看维度">
                 <option value="none">车系明细</option>
-                <option value="brand_name">按品牌合并</option>
                 <option value="sub_brand_name">按厂商合并</option>
+                <option value="brand_name">按品牌合并</option>
+                <option value="group">按集团合并</option>
             </select>
             <span class="spacer"></span>
             <div class="search">
@@ -935,7 +976,7 @@
                     <circle cx="11" cy="11" r="7"></circle>
                     <line x1="20" y1="20" x2="16.5" y2="16.5"></line>
                 </svg>
-                <input id="q" type="search" placeholder="搜索品牌 / 厂商 / 车系" autocomplete="off">
+                <input id="q" type="search" placeholder="搜索品牌 / 集团 / 车系" autocomplete="off">
             </div>
             <button class="btn" id="exportBtn" type="button">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -979,6 +1020,7 @@
 
         <footer>
             数据每月自动更新 · 销量单位为「辆」<br>
+            集团口径：合资品牌按外方品牌归属（如一汽丰田 / 广汽丰田 → 丰田）<br>
             排名仅供参考，不构成任何购买建议
         </footer>
     </div>
@@ -1014,6 +1056,42 @@
                 35: ['跑车', 'sport']
             };
 
+            // 品牌 -> 集团（更大维度合并）
+            // 合资品牌按外方品牌归属：一汽丰田 / 广汽丰田 -> 丰田
+            // 中国品牌按所属集团：吉利汽车 / 吉利银河 / 领克 / 极氪 -> 吉利控股集团
+            var GROUP_MAP = (function () {
+                var groups = {
+                    '比亚迪集团': ['比亚迪', '腾势', '方程豹', '仰望'],
+                    '吉利控股集团': ['吉利汽车', '吉利银河', '吉利几何', '领克', '极氪', '沃尔沃', 'Polestar极星', 'smart', '睿蓝汽车'],
+                    '长城汽车': ['哈弗', '坦克', '魏牌', '欧拉'],
+                    '奇瑞集团': ['奇瑞', '奇瑞风云', '奇瑞新能源', '奇瑞QQ', '星途', '捷途', '捷途山海', 'iCAR', '智界', '纵横', '开瑞'],
+                    '长安汽车集团': ['长安', '长安启源', '深蓝汽车', '阿维塔', '长安欧尚', '长安凯程'],
+                    '上汽集团': ['荣威', 'MG', '名爵', '智己汽车', '飞凡汽车', '大通', '上汽大通MAXUS', '五菱汽车', '宝骏', '尚界', '华境', '埃尚'],
+                    '广汽集团': ['广汽传祺', '埃安', '昊铂', '广汽昊铂', '理念', '广汽集团'],
+                    '东风集团': ['东风风神', '东风奕派', '东风纳米', '东风风行', '东风风度', '东风富康', '岚图', '猛士', '启辰', '灵悉', '示界', '东风汽车'],
+                    '一汽集团': ['红旗', '奔腾', '一汽'],
+                    '北汽集团': ['北京', '北京汽车', '北京越野', 'ARCFOX极狐', '享界'],
+                    '江汽集团': ['江淮汽车', '江淮瑞风', '江淮钇为', '思皓', '尊界'],
+                    '赛力斯集团': ['AITO', 'AITO问界', '蓝电', '东风风光', '瑞驰'],
+                    '蔚来': ['蔚来', '乐道', 'firefly萤火虫'],
+                    '大众集团': ['大众', '奥迪', '奥迪AUDI', '捷达', '斯柯达'],
+                    '日产': ['日产', '英菲尼迪'],
+                    '通用汽车': ['别克', '雪佛兰', '凯迪拉克'],
+                    '福特': ['福特', '林肯'],
+                    '宝马集团': ['宝马', 'MINI'],
+                    '现代起亚': ['现代', '起亚'],
+                    'Stellantis': ['标致', '雪铁龙', 'DS'],
+                    '捷豹路虎': ['路虎', '捷豹'],
+                    '北京汽车制造厂': ['北京汽车制造厂', '212', '极石汽车', 'ROX极石'],
+                    '鑫源汽车': ['SRM鑫源', '鑫源汽车']
+                };
+                var map = {};
+                Object.keys(groups).forEach(function (g) {
+                    groups[g].forEach(function (b) { map[b] = g; });
+                });
+                return map;
+            })();
+
             var ENERGY_LABEL = {
                 all: '', fuel: '燃油车', ne: '新能源', bev: '纯电', phev: '插混', erev: '增程'
             };
@@ -1035,6 +1113,12 @@
 
             function levelOf(type) {
                 return LEVELS[type] || ['其他', 'other'];
+            }
+
+            // 未收录的品牌回落为自身，不会丢数据
+            function groupOf(brand) {
+                var b = String(brand == null ? '' : brand).trim();
+                return GROUP_MAP[b] || b || '其他';
             }
 
             function isSubEnergy(v) {
@@ -1238,7 +1322,7 @@
                 var needEnergy = wantSub && !wantAllNe;
 
                 function pathOf(name) {
-                    return isYear ? (date + '/' + name + '.js')
+                    return isYear ? (date + '/year_merge-' + name + '.js')
                         : (date.slice(0, 4) + '/' + date.slice(4, 6) + '/' + name + '.js');
                 }
                 function keyOf(name) {
@@ -1340,20 +1424,36 @@
                     });
                 }
 
+                var nameOf = merge === 'group'
+                    ? function (it) { return groupOf(it.brand_name); }
+                    : function (it) { return it[merge] || '未知'; };
+
                 var map = {};
                 list.forEach(function (it) {
-                    var name = it[merge] || '未知';
+                    var name = nameOf(it);
                     var c = Number(it.count) || 0;
                     if (!map[name]) {
                         map[name] = {
                             name: name, series: name, brand: it.brand_name || name, sub: it.sub_brand_name || name,
-                            count: 0, models: 0, topModel: '', topCount: -1
+                            count: 0, models: 0, topModel: '', topCount: -1,
+                            brandCount: 0, topBrand: '', brandList: [], brandCounts: {}
                         };
                     }
                     var g = map[name];
                     g.count += c;
                     g.models += 1;
                     if (c > g.topCount) { g.topCount = c; g.topModel = it.series_name; }
+
+                    var bn = String(it.brand_name || '').trim();
+                    if (bn) {
+                        if (!g.brandCounts[bn]) {
+                            g.brandCounts[bn] = 0;
+                            g.brandList.push(bn);
+                            g.brandCount += 1;
+                        }
+                        g.brandCounts[bn] += c;
+                        if (!g.topBrand || g.brandCounts[bn] > g.brandCounts[g.topBrand]) g.topBrand = bn;
+                    }
                 });
                 return Object.keys(map).map(function (k) { return map[k]; });
             }
@@ -1363,6 +1463,7 @@
                 rows.sort(function (a, b) { return b.count - a.count; });
                 rows.forEach(function (r, i) { r.rank = i + 1; });
                 state.rows = rows;
+                document.body.classList.toggle('merge-group', state.merge === 'group');
 
                 renderTitle();
                 renderStats();
@@ -1407,8 +1508,25 @@
                 var share = total ? Math.round(top10 / total * 1000) / 10 : 0;
                 var top = rows[0];
 
-                var labelCount = state.merge === 'brand_name' ? '上榜品牌'
-                    : state.merge === 'sub_brand_name' ? '上榜厂商' : '上榜车系';
+                var labelCount = state.merge === 'group' ? '上榜集团'
+                    : state.merge === 'brand_name' ? '上榜品牌'
+                        : state.merge === 'sub_brand_name' ? '上榜厂商' : '上榜车系';
+                var unit = state.merge === 'group' ? '集团'
+                    : state.merge === 'brand_name' ? '品牌'
+                        : state.merge === 'sub_brand_name' ? '厂商' : '车系';
+                var modelsTotal = 0;
+                rows.forEach(function (r) { modelsTotal += r.models || 0; });
+                var groupBrands = {};
+                if (state.merge === 'group') {
+                    rows.forEach(function (r) {
+                        (r.brandList || []).forEach(function (b) { groupBrands[b] = 1; });
+                    });
+                }
+                var countSub = state.merge === 'none'
+                    ? '款 · 覆盖品牌 ' + brandCount + ' 个'
+                    : state.merge === 'group'
+                        ? '覆盖 ' + Object.keys(groupBrands).length + ' 个品牌'
+                        : '共 ' + num(modelsTotal) + ' 款车型';
 
                 var cards = [
                     {
@@ -1421,7 +1539,7 @@
                         label: labelCount,
                         icon: '<rect x="3" y="3" width="7" height="7" rx="2"></rect><rect x="14" y="3" width="7" height="7" rx="2"></rect><rect x="3" y="14" width="7" height="7" rx="2"></rect><rect x="14" y="14" width="7" height="7" rx="2"></rect>',
                         value: '<div class="value">' + num(rows.length) + '</div>',
-                        sub: '款 · 覆盖品牌 ' + brandCount + ' 个'
+                        sub: countSub
                     },
                     {
                         label: '销量冠军',
@@ -1433,7 +1551,7 @@
                         label: '头部集中度',
                         icon: '<circle cx="12" cy="12" r="9"></circle><path d="M12 3v9l6.4 6.4"></path>',
                         value: '<div class="value">' + share + '<span style="font-size:15px;font-weight:600">%</span></div>',
-                        sub: 'TOP10 车系销量占比',
+                        sub: 'TOP10 ' + unit + '销量占比',
                         bar: share
                     }
                 ];
@@ -1455,6 +1573,16 @@
             }
 
             function columns() {
+                if (state.merge === 'group') {
+                    return [
+                        { key: 'rank', title: '排名', cls: 'col-rank' },
+                        { key: 'name', title: '集团', sort: 'name' },
+                        { key: 'brands', title: '在榜品牌', sort: 'brandCount', cls: 'col-brands' },
+                        { key: 'models', title: '在榜车型', sort: 'models', cls: 'col-models' },
+                        { key: 'share', title: '占比', cls: 'col-share' },
+                        { key: 'count', title: '销量', sort: 'count', cls: 'col-count' }
+                    ];
+                }
                 if (state.merge !== 'none') {
                     return [
                         { key: 'rank', title: '排名', cls: 'col-rank' },
@@ -1511,15 +1639,15 @@
                 var rows = state.rows;
                 if (kw) {
                     rows = rows.filter(function (r) {
-                        return (r.name || '').toLowerCase().indexOf(kw) > -1
-                            || (r.brand || '').toLowerCase().indexOf(kw) > -1
-                            || (r.sub || '').toLowerCase().indexOf(kw) > -1;
+                        var hay = (r.name || '') + ' ' + (r.brand || '') + ' ' + (r.sub || '');
+                        if (r.brandList && r.brandList.length) hay += ' ' + r.brandList.join(' ');
+                        return hay.toLowerCase().indexOf(kw) > -1;
                     });
                 }
                 var dir = state.sortDir === 'asc' ? 1 : -1;
                 var key = state.sortKey;
                 return rows.slice().sort(function (a, b) {
-                    if (key === 'count' || key === 'models') return ((a[key] || 0) - (b[key] || 0)) * dir;
+                    if (key === 'count' || key === 'models' || key === 'brandCount') return ((a[key] || 0) - (b[key] || 0)) * dir;
                     return String(a[key] || '').localeCompare(String(b[key] || ''), 'zh-CN') * dir;
                 });
             }
@@ -1569,9 +1697,22 @@
                         tds += '<td class="col-price">' + (r.price ? esc(r.price) : '<span class="muted">—</span>') + '</td>';
                     } else {
                         var share = total ? (r.count / total * 100) : 0;
+                        var subText;
+                        if (state.merge === 'group') {
+                            if (r.brandCount > 1 && r.topBrand) {
+                                subText = '主销品牌 ' + r.topBrand;
+                            } else if (r.topModel) {
+                                subText = '主销车型 ' + r.topModel;
+                            }
+                        } else {
+                            subText = r.topModel ? '主销 ' + r.topModel : '';
+                        }
                         tds += '<td><span class="series"><span class="name">' + esc(r.name) + '</span>' +
-                            (r.topModel ? '<span class="sub-name">主销 ' + esc(r.topModel) + '</span>' : '') +
+                            (subText ? '<span class="sub-name">' + esc(subText) + '</span>' : '') +
                             '</span></td>';
+                        if (state.merge === 'group') {
+                            tds += '<td class="col-brands"><span class="muted-num">' + num(r.brandCount) + ' 个</span></td>';
+                        }
                         tds += '<td class="col-models"><span class="muted-num">' + num(r.models) + ' 款</span></td>';
                         tds += '<td class="col-share"><span class="share">' + share.toFixed(1) + '%</span></td>';
                     }
@@ -1595,12 +1736,15 @@
                 var rows = visibleRows();
                 var isNone = state.merge === 'none';
                 var head = isNone ? ['排名', '车系', '级别', '品牌', '厂商', '指导价', '销量']
-                    : ['排名', state.merge === 'brand_name' ? '品牌' : '厂商', '在榜车型', '销量'];
+                    : state.merge === 'group' ? ['排名', '集团', '在榜品牌', '在榜车型', '销量']
+                        : ['排名', state.merge === 'brand_name' ? '品牌' : '厂商', '在榜车型', '销量'];
                 var lines = [head.join(',')];
                 rows.forEach(function (r) {
                     var cells = isNone
                         ? [r.rank, r.series, r.level, r.brand, r.sub, r.price, r.count]
-                        : [r.rank, r.name, r.models, r.count];
+                        : state.merge === 'group'
+                            ? [r.rank, r.name, (r.brandList || []).join('/'), r.models, r.count]
+                            : [r.rank, r.name, r.models, r.count];
                     lines.push(cells.map(function (v) {
                         v = String(v == null ? '' : v);
                         return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;

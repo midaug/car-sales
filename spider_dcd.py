@@ -62,6 +62,23 @@ def replaceStr(s=''):
     return s.replace(' ', '').replace(',', '')
 
 
+# 只保留页面用得到的字段。jsDelivr 对单仓库有 50MB 上限，全字段存会超标
+keep_fields = ('series_id', 'series_name', 'image', 'count', 'price',
+               'last_rank', 'rank', 'brand_name', 'sub_brand_name', 'outter_detail_type')
+
+
+def slimCar(car):
+    """裁掉用不到的字段，图片地址只留基础部分（尺寸参数由页面拼）"""
+    out = {}
+    for field in keep_fields:
+        if field in car:
+            out[field] = car[field]
+    image = out.get('image')
+    if image and '~tplv-' in image:
+        out['image'] = image.split('~tplv-')[0]
+    return out
+
+
 def maskUrl(url):
     """日志里隐去域名，仓库的 Actions 日志是公开的"""
     if site_url and url and site_url in url:
@@ -117,16 +134,37 @@ def requestPage(url, dateStr):
     return None
 
 
-def requestCarData(url, dataPath, dir, dateStr):
+def jsWrap(key, dataStr):
+    """包装成一行 js，页面用 <script> 直接加载写进 sessionStorage"""
+    return "window.sessionStorage.setItem('{0}', '{1}')".format(key, dataStr)
+
+
+def readJs(path, key):
+    """把 .js 里的 JSON 还原成对象，读不出来返回 None"""
+    s = rFile(path)
+    if not s:
+        return None
+    prefix = "window.sessionStorage.setItem('{0}', '".format(key)
+    if not s.startswith(prefix) or not s.endswith("')"):
+        return None
+    try:
+        return json.loads(s[len(prefix):-2])
+    except Exception:
+        return None
+
+
+def requestCarData(url, jsPath, dir, dateStr, car_type):
     """下载一个月的数据（接口单页最多 100 条，需要按 offset 翻页）。
+    只保留页面用得到的字段，仓库体积能小一半多。
     返回 (dataStr, created)，失败返回 (None, False)"""
+    key = '{0}_{1}'.format(car_type, dateStr)
     # 当文件存在时直接读取，避免重复下载
-    if os.path.exists(dataPath):
-        dataStr = rFile(dataPath)
-        if dataStr and dataStr.strip():
-            print('info dataPath exists: {0}'.format(dataPath))
-            return dataStr, False
-        print('warn empty data file, re-download: {0}'.format(dataPath))
+    if os.path.exists(jsPath):
+        data = readJs(jsPath, key)
+        if data is not None:
+            print('info dataPath exists: {0}'.format(jsPath))
+            return json.dumps(data, ensure_ascii=False), False
+        print('warn unreadable data file, re-download: {0}'.format(jsPath))
 
     order = []
     data = {}
@@ -137,12 +175,13 @@ def requestCarData(url, dataPath, dir, dateStr):
             # 翻页中途失败就整月放弃，避免保存残缺数据
             return None, False
         for carSales in carList:
-            carSales.pop('offline_car_ids', None)
-            carSales.pop('online_car_ids', None)
-            key = '{0}_{1}'.format('car', carSales['series_id'])
-            if key not in data:
-                order.append(key)
-            data[key] = carSales
+            item = slimCar(carSales)
+            if 'series_id' not in item:
+                continue
+            car_key = '{0}_{1}'.format('car', item['series_id'])
+            if car_key not in data:
+                order.append(car_key)
+            data[car_key] = item
         print('request month={0} , offset={1} , list.len={2}'.format(dateStr, offset, len(carList)))
         if len(carList) < page_size:
             break
@@ -153,7 +192,7 @@ def requestCarData(url, dataPath, dir, dateStr):
     data['order'] = order
     dataStr = json.dumps(data, ensure_ascii=False)
     mkdir(dir)
-    wFile(dataStr, dataPath)
+    wFile(jsWrap(key, dataStr), jsPath)
     print('info month={0} 共 {1} 条'.format(dateStr, len(order)))
     return dataStr, True
 
@@ -161,26 +200,24 @@ def requestCarData(url, dataPath, dir, dateStr):
 def start(url, dateStr, car_type):
     """抓取一月一类数据，成功返回 True"""
     fileDir = '{dir}/{year}/{month}'.format(dir=data_path, year=dateStr[:4], month=dateStr[4:6])
-    allCarPath = '{dir}/{type}.json'.format(dir=fileDir, type=car_type)
-    allCarJsPath = '{dir}/{type}.js'.format(dir=fileDir, type=car_type)
-    carData, created = requestCarData(url, allCarPath, fileDir, dateStr)
+    jsPath = '{dir}/{type}.js'.format(dir=fileDir, type=car_type)
+    carData, created = requestCarData(url, jsPath, fileDir, dateStr, car_type)
     if carData is None:
         return False
-    if created or not os.path.exists(allCarJsPath):
-        wFile("window.sessionStorage.setItem('{0}_{1}', '{2}')".format(car_type, dateStr, carData), allCarJsPath)
     return True
 
 
 def requestEnergyMap(dateStr, dir):
     """抓取一个月的能源类型映射 {series_id: 1|2|3}，纯电/插混/增程分开取。
-    只存 id 和类型，一个月大约几 KB。返回 (dataStr, created)"""
-    dataPath = '{dir}/energy.json'.format(dir=dir)
-    if os.path.exists(dataPath):
-        dataStr = rFile(dataPath)
-        if dataStr and dataStr.strip():
-            print('info dataPath exists: {0}'.format(dataPath))
-            return dataStr, False
-        print('warn empty data file, re-download: {0}'.format(dataPath))
+    只存 id 和类型，一个月大约 4KB。返回 (data, created)"""
+    jsPath = '{dir}/energy.js'.format(dir=dir)
+    key = 'energy_{0}'.format(dateStr)
+    if os.path.exists(jsPath):
+        cached = readJs(jsPath, key)
+        if isinstance(cached, dict):
+            print('info dataPath exists: {0}'.format(jsPath))
+            return cached, False
+        print('warn unreadable data file, re-download: {0}'.format(jsPath))
 
     result = {}
     for net, net_value in energy_types.items():
@@ -198,23 +235,21 @@ def requestEnergyMap(dateStr, dir):
                 break
             offset += page_size
 
-    dataStr = json.dumps(result, ensure_ascii=False, sort_keys=True)
     mkdir(dir)
-    wFile(dataStr, dataPath)
     print('info energy month={0} 共 {1} 条'.format(dateStr, len(result)))
-    return dataStr, True
+    return result, True
 
 
 def startEnergy(dateStr):
     """抓取一个月的能源类型映射，成功返回 True"""
     fileDir = '{dir}/{year}/{month}'.format(dir=data_path, year=dateStr[:4], month=dateStr[4:6])
-    jsonPath = '{0}/energy.json'.format(fileDir)
     jsPath = '{0}/energy.js'.format(fileDir)
-    dataStr, created = requestEnergyMap(dateStr, fileDir)
-    if dataStr is None:
+    result, created = requestEnergyMap(dateStr, fileDir)
+    if result is None:
         return False
-    if created or not os.path.exists(jsPath):
-        wFile("window.sessionStorage.setItem('energy_{0}', '{1}')".format(dateStr, dataStr), jsPath)
+    if created:
+        dataStr = json.dumps(result, ensure_ascii=False, sort_keys=True)
+        wFile(jsWrap('energy_{0}'.format(dateStr), dataStr), jsPath)
     return True
 
 
@@ -223,67 +258,54 @@ def mergeYear(car_type):
     years = sorted([f for f in os.listdir(data_path) if os.path.isdir(data_path + '/' + f)])
     for year in years:
         year_path = data_path + "/" + year
-        allCarPath = '{dir}/year_merge-{type}.json'.format(dir=year_path, type=car_type)
         allCarJsPath = '{dir}/year_merge-{type}.js'.format(dir=year_path, type=car_type)
         dataMap = {}
         months = sorted([year_path + '/' + f for f in os.listdir(year_path) if os.path.isdir(year_path + '/' + f)])
         for month in months:
-            filePath = '{dir}/{type}.json'.format(dir=month, type=car_type)
-            if not os.path.exists(filePath):
+            dateStr = year + os.path.basename(month)
+            filePath = '{dir}/{type}.js'.format(dir=month, type=car_type)
+            cars = readJs(filePath, '{0}_{1}'.format(car_type, dateStr))
+            if not cars:
                 continue
-            try:
-                cars = json.loads(rFile(filePath))
-                for key in cars:
-                    if 'order' == key:
-                        continue
-                    if key in dataMap:
-                        oldCount = dataMap[key].get('count') or 0
-                        newCount = cars[key].get('count') or 0
-                        dataMap[key]['count'] = int(oldCount) + int(newCount)
-                    else:
-                        dataMap[key] = cars[key]
-            except Exception as e:
-                print('Failed mergeYear error, path={0} , {1}: {2}'.format(filePath, type(e).__name__, e))
+            for key in cars:
+                if 'order' == key:
+                    continue
+                if key in dataMap:
+                    oldCount = dataMap[key].get('count') or 0
+                    newCount = cars[key].get('count') or 0
+                    dataMap[key]['count'] = int(oldCount) + int(newCount)
+                else:
+                    dataMap[key] = cars[key]
         dataMap['order'] = [key for key in dataMap]
         dataStr = json.dumps(dataMap, ensure_ascii=False)
         mkdir(year_path)
-        if rFile(allCarPath) != dataStr:
-            wFile(dataStr, allCarPath)
-            print('info mergeYear updated: {0}'.format(allCarPath))
-        jsStr = "window.sessionStorage.setItem('{0}_{1}', '{2}')".format('year_merge-' + car_type, year, dataStr)
+        jsStr = jsWrap('year_merge-{0}_{1}'.format(car_type, year), dataStr)
         if rFile(allCarJsPath) != jsStr:
             wFile(jsStr, allCarJsPath)
+            print('info mergeYear updated: {0}'.format(allCarJsPath))
 
 
 def mergeYearEnergy():
-    """把每月 energy.json 合并成年度映射，内容没变不重写"""
+    """把每月 energy.js 合并成年度映射，内容没变不重写"""
     years = sorted([f for f in os.listdir(data_path) if os.path.isdir(data_path + '/' + f)])
     for year in years:
         year_path = data_path + "/" + year
-        jsonPath = '{0}/year_merge-energy.json'.format(year_path)
         jsPath = '{0}/year_merge-energy.js'.format(year_path)
         merged = {}
         months = sorted([year_path + '/' + f for f in os.listdir(year_path) if os.path.isdir(year_path + '/' + f)])
         for month in months:
-            filePath = '{0}/energy.json'.format(month)
-            if not os.path.exists(filePath):
-                continue
-            try:
-                monthMap = json.loads(rFile(filePath))
-                if isinstance(monthMap, dict):
-                    merged.update(monthMap)
-            except Exception as e:
-                print('Failed mergeYearEnergy error, path={0} , {1}: {2}'.format(filePath, type(e).__name__, e))
+            dateStr = year + os.path.basename(month)
+            monthMap = readJs('{0}/energy.js'.format(month), 'energy_{0}'.format(dateStr))
+            if isinstance(monthMap, dict):
+                merged.update(monthMap)
         if not merged:
             continue
         dataStr = json.dumps(merged, ensure_ascii=False, sort_keys=True)
         mkdir(year_path)
-        if rFile(jsonPath) != dataStr:
-            wFile(dataStr, jsonPath)
-            print('info mergeYearEnergy updated: {0}'.format(jsonPath))
-        jsStr = "window.sessionStorage.setItem('year_merge-energy_{0}', '{1}')".format(year, dataStr)
+        jsStr = jsWrap('year_merge-energy_{0}'.format(year), dataStr)
         if rFile(jsPath) != jsStr:
             wFile(jsStr, jsPath)
+            print('info mergeYearEnergy updated: {0}'.format(jsPath))
 
 
 def writeLastDate():
@@ -297,7 +319,7 @@ def writeLastDate():
             month_path = '{0}/{1}'.format(year_path, m)
             if not os.path.isdir(month_path):
                 continue
-            if os.path.exists('{0}/car_all.json'.format(month_path)):
+            if os.path.exists('{0}/car_all.js'.format(month_path)):
                 ym = '{0}{1}'.format(year, m)
                 if last is None or ym > last:
                     last = ym

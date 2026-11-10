@@ -464,6 +464,23 @@
             font-variant-numeric: tabular-nums;
         }
 
+        .head-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .notice {
+            padding: 3px 9px;
+            border-radius: 999px;
+            background: #fff5e6;
+            color: #a8661a;
+            font-size: 12px;
+            line-height: 1.7;
+        }
+
         .table-wrap {
             min-height: 260px;
         }
@@ -936,7 +953,10 @@
         <section class="card">
             <div class="table-head">
                 <h2 id="tableTitle">销量数据<span id="tableSub"></span></h2>
-                <span class="meta" id="tableMeta"></span>
+                <div class="head-meta">
+                    <span class="notice" id="notice" hidden></span>
+                    <span class="meta" id="tableMeta"></span>
+                </div>
             </div>
             <div class="table-wrap" id="tableWrap">
                 <table>
@@ -1034,6 +1054,7 @@
                 keyword: '',
                 rows: [],
                 raw: null,
+                notice: '',
                 token: 0
             };
 
@@ -1153,10 +1174,11 @@
             }
 
             // ---------- 请求数据 ----------
-            // 能源筛选支持多选：
-            //   空 = 全部；含 fuel 时以 car_all 为底，否则用 car_new_energy
-            //   燃油 = 不在 energy 映射里的车；纯电/插混/增程 = 映射值命中
-            function compose(base, energyMap, picked) {
+            // 能源筛选支持多选，空 = 全部：
+            //   含 fuel 时以 car_all 为底，否则用 car_new_energy
+            //   燃油 = car_all 里不在新能源榜的车（源站的能源细分并不覆盖全部历史月份，
+            //          用它做差集最准）；纯电/插混/增程 = energy 映射里类型命中
+            function compose(base, picked, neSet, energyMap) {
                 if (!picked.length) return base;
 
                 var wantFuel = picked.indexOf('fuel') > -1;
@@ -1171,12 +1193,13 @@
                 (base.order || []).forEach(function (key) {
                     var it = base[key];
                     if (!it) return;
-                    var t = Number(energyMap[String(it.series_id)] || 0);
+                    var sid = String(it.series_id);
+                    var inNe = neSet ? !!neSet[sid] : true;
                     var keep;
-                    if (!t) {
+                    if (!inNe) {
                         keep = wantFuel;
                     } else {
-                        keep = wantAllNe || codes.indexOf(t) > -1;
+                        keep = wantAllNe || codes.indexOf(Number(energyMap[sid] || 0)) > -1;
                     }
                     if (keep) {
                         out[key] = it;
@@ -1187,34 +1210,78 @@
                 return out;
             }
 
+            // 能源细分对历史月份的覆盖并不完整，覆盖率低时给个提示
+            function energyCoverage(neData, energyMap) {
+                var order = neData.order || [];
+                if (!order.length) return 1;
+                var hit = 0;
+                order.forEach(function (k) {
+                    var it = neData[k];
+                    if (it && energyMap[String(it.series_id)]) hit++;
+                });
+                return hit / order.length;
+            }
+
             function refresh() {
                 var token = ++state.token;
                 var isYear = state.mode === 'year';
                 var date = isYear ? state.year : state.month;
                 var picked = state.energy;
 
+                var wantFuel = picked.indexOf('fuel') > -1;
+                var wantAllNe = picked.indexOf('ne') > -1;
+                var wantSub = picked.some(isSubEnergy);
                 // 没选或选了燃油 -> 以全量数据为底，否则直接用新能源表
-                var baseType = (!picked.length || picked.indexOf('fuel') > -1) ? 'car_all' : 'car_new_energy';
-                // 只选了"新能源"整体时不需要映射表
-                var needEnergy = picked.length > 0 &&
-                    !(picked.length === 1 && picked[0] === 'ne');
+                var useAll = !picked.length || wantFuel;
 
-                var baseKey = isYear ? ('year_merge-' + baseType + '_' + date) : (baseType + '_' + date);
-                var basePath = isYear ? (date + '/year_merge-' + baseType + '.js')
-                    : (date.slice(0, 4) + '/' + date.slice(4, 6) + '/' + baseType + '.js');
+                var needNeSet = wantFuel && !wantAllNe;
+                var needEnergy = wantSub && !wantAllNe;
 
-                var tasks = [loadData(baseKey, basePath)];
+                function pathOf(name) {
+                    return isYear ? (date + '/' + name + '.js')
+                        : (date.slice(0, 4) + '/' + date.slice(4, 6) + '/' + name + '.js');
+                }
+                function keyOf(name) {
+                    return isYear ? ('year_merge-' + name + '_' + date) : (name + '_' + date);
+                }
+
+                var baseName = useAll ? 'car_all' : 'car_new_energy';
+                var tasks = [loadData(keyOf(baseName), pathOf(baseName))];
+                var neIndex = -1;
+                var mapIndex = -1;
+                if (needNeSet) {
+                    neIndex = tasks.length;
+                    tasks.push(loadData(keyOf('car_new_energy'), pathOf('car_new_energy')));
+                }
                 if (needEnergy) {
-                    var eKey = isYear ? ('year_merge-energy_' + date) : ('energy_' + date);
-                    var ePath = isYear ? (date + '/year_merge-energy.js')
-                        : (date.slice(0, 4) + '/' + date.slice(4, 6) + '/energy.js');
-                    tasks.push(loadData(eKey, ePath));
+                    mapIndex = tasks.length;
+                    tasks.push(loadData(keyOf('energy'), pathOf('energy')));
                 }
 
                 setLoading(true);
                 Promise.all(tasks).then(function (res) {
                     if (token !== state.token) return;
-                    state.raw = compose(res[0], res[1] || {}, picked);
+                    var neData = useAll ? (neIndex > -1 ? res[neIndex] : null) : res[0];
+                    var map = mapIndex > -1 ? (res[mapIndex] || {}) : {};
+
+                    var neSet = null;
+                    if (useAll && neData) {
+                        neSet = {};
+                        (neData.order || []).forEach(function (k) {
+                            var it = neData[k];
+                            if (it) neSet[String(it.series_id)] = 1;
+                        });
+                    }
+
+                    state.notice = '';
+                    if (needEnergy && neData) {
+                        var cov = energyCoverage(neData, map);
+                        if (cov < 0.9) {
+                            state.notice = '该月的能源细分数据源站收录不全（约 ' + Math.round(cov * 100) + '%），纯电/插混/增程结果可能偏少';
+                        }
+                    }
+
+                    state.raw = compose(res[0], picked, neSet, map);
                     render();
                 }).catch(function () {
                     if (token !== state.token) return;
@@ -1318,6 +1385,10 @@
                 }
                 $('tableTitle').innerHTML = (isYear ? state.year + '年' : monthText(state.month)) +
                     ' · ' + label + '销量<span id="tableSub">' + sub + '</span>';
+
+                var notice = $('notice');
+                notice.hidden = !state.notice;
+                notice.textContent = state.notice || '';
             }
 
             function renderStats() {

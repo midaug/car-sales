@@ -82,7 +82,7 @@ jobs:
       - name: Purge jsDelivr cache
         if: steps.commit.outputs.pushed == 'true'
         run: |
-          for f in data/last_date.js data/*/year_merge-car_all.js data/*/year_merge-car_new_energy.js; do
+          for f in data/last_date.js data/*/year_merge-car_all.js data/*/year_merge-car_new_energy.js data/*/year_merge-energy.js; do
             # 带分支和不带分支两种 URL 形态各自缓存，都刷一遍
             curl -s -o /dev/null "https://purge.jsdelivr.net/gh/midaug/car-sales@main/${f}" || true
             curl -s -o /dev/null "https://purge.jsdelivr.net/gh/midaug/car-sales/${f}" || true

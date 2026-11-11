@@ -1462,6 +1462,7 @@
 
         <footer>
             数据每月自动更新 · 销量单位为「辆」<br>
+            源站榜单覆盖 2020 年 3 月起；2020 年 2 月源站从未提供，按 2020 年 3 月复制填充（页面标注「估算」），其余月份均为源站原始数据<br>
             在榜品牌 / 在榜车型的数字可悬浮（移动端点按）查看明细<br>
             集团口径：合资车型同时计入品牌方集团与中方集团（上汽大众 → 大众集团 / 上汽集团），可切换「品牌方 / 中方 / 双计」<br>
             华为系作为叠加归属并入集团榜：问界同时计入赛力斯集团与华为系<br>
@@ -1484,7 +1485,11 @@
                 'https://fastly.jsdelivr.net/gh/midaug/car-sales/data/',
                 'https://cdn.jsdelivr.net/gh/midaug/car-sales/data/'
             ];
-            var START_MONTH = '202003';
+            var START_MONTH = '202002';
+
+            // 源站从来没提供过这些月份（接口直接回退成最新月），按「宁可重复也不能缺一个月」
+            // 的口径用相邻月复制兜底，页面上会标明「估算」。键 = 缺的月，值 = 被复制的月
+            var EST_MONTHS = { '202002': '202003' };
 
             // outter_detail_type -> [级别名称, 车型大类]
             var LEVELS = {
@@ -2015,6 +2020,21 @@
                     // 2023-10 之前源站不再提供当月能源明细，只能按车型历史归类补全
                     if (needEnergy && (isYear ? Number(date) < 2024 : date < '202310')) {
                         state.notice = '2023 年 10 月前的能源细分源站已不再提供，纯电/插混/增程按车型历史上报归类，仅供参考';
+                    }
+                    // 源站确实没有的月份（用相邻月复制兜底），必须标出来，不然会当成真实销量
+                    var estList = [];
+                    if (isYear) {
+                        Object.keys(EST_MONTHS).forEach(function (k) {
+                            if (k.slice(0, 4) === String(date)) estList.push(k);
+                        });
+                    } else if (EST_MONTHS[date]) {
+                        estList.push(date);
+                    }
+                    if (estList.length) {
+                        var estText = estList.map(function (k) {
+                            return monthText(k) + '源站无数据，按' + monthText(EST_MONTHS[k]) + '复制（估算）';
+                        }).join('；');
+                        state.notice = state.notice ? state.notice + '；' + estText : estText;
                     }
 
                     state.raw = compose(res[0], picked, neSet, map);

@@ -60,6 +60,10 @@ jobs:
           # 可选：站点域名可以存到 Secrets 里（DCD_BASE_URL），不配置就用脚本里 base64 解码的默认值
           DCD_BASE_URL: ${{ secrets.DCD_BASE_URL }}
 
+      # 数据体检：缺月 / 重复月 / 坏文件都会让任务变红
+      - name: check data
+        run: python check_data.py
+
       # 数据有变化才提交，避免每天产生空提交
       - name: Commit files
         id: commit

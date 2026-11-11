@@ -75,27 +75,32 @@ def main():
         if not isinstance(d, dict):
             broken.append(ym)
             continue
-        items = [v for k, v in d.items() if k != 'order']
+        # _est 是补缺月时写进去的标记（值 = 被复制的月份），不是车型
+        items = [v for k, v in d.items() if k != 'order' and not k.startswith('_')]
         if not items:
             broken.append(ym)
             continue
         top = max(items, key=lambda x: x.get('count') or 0)
         sig = tuple(sorted((str(v.get('series_id')), v.get('count')) for v in items))
-        rows.append((ym, len(items), sum(v.get('count') or 0 for v in items), top, sig))
+        rows.append((ym, len(items), sum(v.get('count') or 0 for v in items), top, sig, d.get('_est')))
 
     print('{0:<8}{1:>6}{2:>13}  冠军'.format('月份', '车系', '总销量'))
-    for ym, n, s, top, _ in rows:
-        print('{0:<8}{1:>6}{2:>13,}  {3} {4:,}'.format(ym, n, s, top.get('series_name'), top.get('count') or 0))
+    for ym, n, s, top, _, est in rows:
+        print('{0:<8}{1:>6}{2:>13,}  {3} {4:,}{5}'.format(
+            ym, n, s, top.get('series_name'), top.get('count') or 0,
+            '   [估算：沿用 {0}]'.format(est) if est else ''))
 
     by_sig = defaultdict(list)
-    for ym, _, _, _, sig in rows:
-        by_sig[sig].append(ym)
+    for ym, _, _, _, sig, est in rows:
+        if not est:
+            by_sig[sig].append(ym)
 
     dup = {sig: v for sig, v in by_sig.items() if len(v) > 1}
     missing = [ym for ym in same_range(rows[0][0], rows[-1][0]) if ym not in {r[0] for r in rows}]
+    estimated = [(r[0], r[5]) for r in rows if r[5]]
 
     years_sum = defaultdict(lambda: [0, 0])
-    for ym, n, s, _, _ in rows:
+    for ym, n, s, _, _, _ in rows:
         years_sum[ym[:4]][0] += n
         years_sum[ym[:4]][1] += s
     print('\n年度合计')
@@ -103,8 +108,11 @@ def main():
         n, s = years_sum[y]
         print('  {0}: {1:>6} 款次  {2:>13,}'.format(y, n, s))
 
+    if estimated:
+        print('\n估算月份（源站无当月数据，用相邻月复制，页面会标注）: {0}'.format(
+            ', '.join('{0}<-{1}'.format(a, b) for a, b in estimated)))
     if missing:
-        print('\n缺失月份（源站不提供，页面显示「暂无数据」）: {0}'.format(', '.join(missing)))
+        print('\n缺失月份（源站不提供）: {0}'.format(', '.join(missing)))
     if broken:
         print('\n读不出来/空文件: {0}'.format(', '.join(broken)))
     if dup:
@@ -112,7 +120,7 @@ def main():
         for v in dup.values():
             print('  {0}  {1} 个月'.format(', '.join(v), len(v)))
 
-    ok = not broken and not dup
+    ok = not broken and not dup and not missing
     print('\n共 {0} 个月，{1}'.format(len(rows), '体检通过' if ok else '存在问题'))
     return 0 if ok else 1
 

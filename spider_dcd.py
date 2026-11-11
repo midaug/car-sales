@@ -140,6 +140,10 @@ def jsWrap(key, dataStr):
     return "window.sessionStorage.setItem('{0}', '{1}')".format(key, dataStr)
 
 
+# 需要强制重抓的月份（封面数据可能被写错过），用环境变量指定：FORCE_MONTHS=202502,202503
+force_months = set(x.strip() for x in (os.environ.get('FORCE_MONTHS') or '').split(',') if x.strip())
+
+
 def readJs(path, key):
     """把 .js 里的 JSON 还原成对象，读不出来返回 None"""
     s = rFile(path)
@@ -280,6 +284,9 @@ def start(url, dateStr, car_type):
     """抓取一月一类数据，返回 ok / stale / fail"""
     fileDir = '{dir}/{year}/{month}'.format(dir=data_path, year=dateStr[:4], month=dateStr[4:6])
     jsPath = '{dir}/{type}.js'.format(dir=fileDir, type=car_type)
+    if dateStr in force_months and os.path.exists(jsPath):
+        os.remove(jsPath)
+        print('info force re-download: {0}'.format(jsPath))
     carData, created, status = requestCarData(url, jsPath, fileDir, dateStr, car_type)
     return status
 
@@ -331,18 +338,22 @@ def requestEnergyMap(dateStr, dir):
                 break
             offset += page_size
 
-    # 和相邻月或最新月完全一致说明源站把历史月回退成了当前快照，丢掉
-    refs = [neighborEnergy(dir, dateStr, -1), neighborEnergy(dir, dateStr, 1)]
-    latest = latestMonth()
-    if latest and latest != dateStr:
-        p = '{0}/{1}/{2}/energy.js'.format(data_path, latest[:4], latest[4:])
-        d = readJs(p, 'energy_{0}'.format(latest)) if os.path.exists(p) else None
-        if isinstance(d, dict):
-            refs.append(d)
-    for nb in refs:
-        if nb is not None and nb == result:
-            print('ERROR energy month={0} 与相邻月/最新月完全相同，判定为快照回退，已跳过'.format(dateStr))
-            return None, False, 'stale'
+    # 能源映射只记「车系 -> 类型」，车系集合本身很稳定，相邻月完全一致是正常现象，
+    # 用相邻月比对会误杀（2025-07 就踩过）。这里改成看「当月新能源榜的覆盖率」：
+    # 源站回退成最新月快照时，当月榜单里大量车系在映射里查不到，覆盖率会明显偏低。
+    coverage = None
+    nePath = '{0}/{1}/{2}/car_new_energy.js'.format(data_path, dateStr[:4], dateStr[4:])
+    ne = readJs(nePath, 'car_new_energy_{0}'.format(dateStr))
+    if isinstance(ne, dict) and ne.get('order'):
+        hit = 0
+        for k in ne['order']:
+            it = ne.get(k)
+            if isinstance(it, dict) and str(it.get('series_id')) in result:
+                hit += 1
+        coverage = hit / len(ne['order'])
+    if not result or (coverage is not None and coverage < 0.6):
+        print('ERROR energy month={0} 覆盖率过低({1})，判定为快照回退，已跳过'.format(dateStr, coverage))
+        return None, False, 'stale'
 
     mkdir(dir)
     print('info energy month={0} 共 {1} 条'.format(dateStr, len(result)))
@@ -353,6 +364,9 @@ def startEnergy(dateStr):
     """抓取一个月的能源类型映射，返回 ok / stale / fail"""
     fileDir = '{dir}/{year}/{month}'.format(dir=data_path, year=dateStr[:4], month=dateStr[4:6])
     jsPath = '{0}/energy.js'.format(fileDir)
+    if dateStr in force_months and os.path.exists(jsPath):
+        os.remove(jsPath)
+        print('info force re-download: {0}'.format(jsPath))
     result, created, status = requestEnergyMap(dateStr, fileDir)
     if status != 'ok':
         return status
@@ -360,6 +374,61 @@ def startEnergy(dateStr):
         dataStr = json.dumps(result, ensure_ascii=False, sort_keys=True)
         wFile(jsWrap('energy_{0}'.format(dateStr), dataStr), jsPath)
     return 'ok'
+
+
+def ymShift(ym, step):
+    """月份加减，返回 YYYYMM"""
+    y, m = int(ym[:4]), int(ym[4:])
+    m += step
+    while m < 1:
+        y, m = y - 1, m + 12
+    while m > 12:
+        y, m = y + 1, m - 12
+    return '{0:04d}{1:02d}'.format(y, m)
+
+
+def monthExists(ym):
+    return os.path.exists('{0}/{1}/{2}/car_all.js'.format(data_path, ym[:4], ym[4:]))
+
+
+def fillMissing(start, end):
+    """补缺月：源站彻底没有的月份（例如 2020-02），按「宁可重复也不能缺一个月」的口径，
+    用最近的相邻月复制一份并打上 _est 标记，页面会标明「估算」，时间轴不断档。
+    只兜底「源站本来就不给」的老月份（24 个月以前）；最近两年的月份抓不到就当失败，
+    不拿相邻月顶替，免得一次网络抖动被悄悄糊过去。"""
+    filled = []
+    # 源站最近两年都能正常返回，这个范围内的缺月一律视为抓取失败，交给重试和 Actions 报红
+    young = ymShift(end, -24)
+    month = start
+    while month <= end:
+        if not monthExists(month):
+            if month > young:
+                print('warn month={0} 缺数据但月份太新，不做兜底，等下次重试'.format(month))
+                month = ymShift(month, 1)
+                continue
+            src = None
+            for step in (-1, 1, -2, 2, -3, 3):
+                cand = ymShift(month, step)
+                if monthExists(cand):
+                    src = cand
+                    break
+            if src:
+                for t in ('car_all', 'car_new_energy', 'energy'):
+                    sp = '{0}/{1}/{2}/{3}.js'.format(data_path, src[:4], src[4:], t)
+                    dp = '{0}/{1}/{2}/{3}.js'.format(data_path, month[:4], month[4:], t)
+                    obj = readJs(sp, '{0}_{1}'.format(t, src))
+                    if not isinstance(obj, dict):
+                        continue
+                    if t != 'energy':
+                        obj = dict(obj)
+                        obj['_est'] = src
+                    mkdir(os.path.dirname(dp))
+                    wFile(jsWrap('{0}_{1}'.format(t, month),
+                                 json.dumps(obj, ensure_ascii=False, sort_keys=(t == 'energy'))), dp)
+                filled.append('{0}<-{1}'.format(month, src))
+                print('warn month={0} 源站无当月数据，已用 {1} 兜底填充（页面会标注估算）'.format(month, src))
+        month = ymShift(month, 1)
+    return filled
 
 
 def mergeYear(car_type):
@@ -377,7 +446,7 @@ def mergeYear(car_type):
             if not cars:
                 continue
             for key in cars:
-                if 'order' == key:
+                if 'order' == key or key.startswith('_'):
                     continue
                 if key in dataMap:
                     oldCount = dataMap[key].get('count') or 0
@@ -478,6 +547,9 @@ if __name__ == "__main__":
             else:
                 failed.append('energy/{0}'.format(month))
             month = datetime.strftime(datetime.strptime(month, format_str) + relativedelta(months=1), format_str)
+        # 源站确实没有的月份用相邻月兜底，保证时间轴不断档（页面会标注「估算」）
+        last = latestMonth() or end_month
+        filled = fillMissing(start_month, last)
         mergeYear('car_all')
         mergeYear('car_new_energy')
         mergeYearEnergy()
@@ -485,6 +557,8 @@ if __name__ == "__main__":
         print('Finished, {0}/{1} success'.format(success, total))
         if skipped:
             print('Skipped (源站已不提供该月，返回的是最新月数据): {0}'.format(', '.join(skipped)))
+        if filled:
+            print('Filled (源站无数据，用相邻月兜底): {0}'.format(', '.join(filled)))
     except Exception:
         import traceback
         traceback.print_exc()

@@ -302,6 +302,49 @@
             color: var(--accent);
         }
 
+        .multi-panel .grp {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 6px;
+            padding: 6px 10px 2px;
+            font-size: 11.5px;
+            font-weight: 600;
+            letter-spacing: .04em;
+            color: var(--muted);
+        }
+
+        .multi-panel .grp:first-child {
+            margin-top: 0;
+        }
+
+        .multi-panel .grp-btn {
+            padding: 2px 6px;
+            border: 0;
+            border-radius: 6px;
+            background: none;
+            color: var(--accent);
+            font: inherit;
+            font-size: 11.5px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .multi-panel .grp-btn:hover {
+            background: var(--accent-soft);
+        }
+
+        #levelMulti .multi-panel {
+            min-width: 186px;
+            max-height: 360px;
+            overflow-y: auto;
+        }
+
+        #levelMulti .multi-panel label {
+            padding: 6px 10px;
+        }
+
         .search svg {
             position: absolute;
             top: 50%;
@@ -1316,7 +1359,7 @@
         <header class="hero">
             <div>
                 <h1>汽车销量<em>排行</em></h1>
-                <p>乘用车月度销量数据 · 支持车系 / 厂商 / 品牌 / 集团（含合资双计、华为系）</p>
+                <p>乘用车月度销量数据 · 支持车系 / 厂商 / 品牌 / 集团合并，按级别、能源、价格筛选</p>
             </div>
             <div class="pill"><i></i><span id="updatedAt">数据加载中…</span></div>
         </header>
@@ -1337,9 +1380,19 @@
                 </button>
                 <div class="multi-panel"></div>
             </div>
-            <div class="multi" id="bodyMulti">
+            <div class="multi" id="levelMulti">
                 <button class="multi-btn" type="button" aria-haspopup="true">
                     <span class="multi-text">全部车型</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </button>
+                <div class="multi-panel"></div>
+            </div>
+            <div class="multi" id="priceMulti">
+                <button class="multi-btn" type="button" aria-haspopup="true">
+                    <span class="multi-text">全部价位</span>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                         stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="6 9 12 15 18 9"></polyline>
@@ -1412,6 +1465,8 @@
             在榜品牌 / 在榜车型的数字可悬浮（移动端点按）查看明细<br>
             集团口径：合资车型同时计入品牌方集团与中方集团（上汽大众 → 大众集团 / 上汽集团），可切换「品牌方 / 中方 / 双计」<br>
             华为系作为叠加归属并入集团榜：问界同时计入赛力斯集团与华为系<br>
+            能源口径：纯电 / 插混 / 增程 / 双动力（同一车系同时有纯电与增程版本，源站单独一类）/ 燃油车（含油电混动 HEV，榜单未再细分）<br>
+            级别取自源站分类：车身形式（轿车 / SUV / MPV / 跑车）+ 尺寸段（微型～大型）；6 座 / 7 座等座椅数属于具体配置，榜单接口没有这个字段<br>
             <details class="caliber">
                 <summary>查看集团归属明细（<span id="caliberStat">—</span>）</summary>
                 <div class="caliber-list" id="caliberList"></div>
@@ -1589,26 +1644,77 @@
             })();
 
             var ENERGY_LABEL = {
-                all: '', fuel: '燃油车', ne: '新能源', bev: '纯电', phev: '插混', erev: '增程'
-            };
-
-            var BODY_LABEL = {
-                all: '', sedan: '轿车', suv: 'SUV', mpv: 'MPV', mini: '微型车', sport: '跑车'
+                all: '', fuel: '燃油车', ne: '新能源', bev: '纯电', phev: '插混', erev: '增程', dm: '双动力'
             };
 
             // 多选项（value, 文案）
+            // dm = 源站的 new_energy_type=4：同一车系同时有纯电和增程版本，拆不开，单列一类
             var ENERGY_OPTS = [
-                ['fuel', '燃油车'], ['ne', '新能源'], ['bev', '纯电'], ['phev', '插混'], ['erev', '增程']
-            ];
-            var BODY_OPTS = [
-                ['sedan', '轿车'], ['suv', 'SUV'], ['mpv', 'MPV'], ['mini', '微型车'], ['sport', '跑车']
+                ['fuel', '燃油车（含油电混动）', '燃油车'], ['ne', '新能源'], ['bev', '纯电'],
+                ['phev', '插混'], ['erev', '增程'], ['dm', '双动力（纯电+增程）', '双动力']
             ];
 
-            // 纯电/插混/增程 在 energy 映射里的取值
-            var ENERGY_CODE = { bev: 1, phev: 2, erev: 3 };
+            // 级别筛选：按车身形式分组，组头可一键全选
+            var LEVEL_GROUPS = [
+                {
+                    key: 'sedan', name: '轿车', items: [
+                        [0, '微型车'], [1, '小型车'], [2, '紧凑型车'], [3, '中型车'], [4, '中大型车'], [5, '大型车']
+                    ]
+                },
+                {
+                    key: 'suv', name: 'SUV', items: [
+                        [10, '小型SUV'], [11, '紧凑型SUV'], [12, '中型SUV'], [13, '中大型SUV'], [14, '大型SUV']
+                    ]
+                },
+                {
+                    key: 'mpv', name: 'MPV', items: [[21, '紧凑型MPV'], [22, '中型MPV'], [24, '中大型MPV'], [23, '大型MPV']]
+                },
+                { key: 'sport', name: '跑车', items: [[35, '跑车']] }
+            ];
+
+            // 价格段：按指导价区间中值归档
+            var PRICE_OPTS = [
+                ['p1', '10万以下'], ['p2', '10-15万'], ['p3', '15-20万'],
+                ['p4', '20-30万'], ['p5', '30-50万'], ['p6', '50万以上']
+            ];
+
+            var PRICE_LABEL = (function () {
+                var m = {};
+                PRICE_OPTS.forEach(function (o) { m[o[0]] = o[1]; });
+                return m;
+            })();
+
+            // 级别编码 -> 名称 / 所属车身形式
+            var LEVEL_NAME = {};
+            LEVEL_GROUPS.forEach(function (g) {
+                g.items.forEach(function (it) { LEVEL_NAME[String(it[0])] = it[1]; });
+            });
+
+            // 纯电/插混/增程/双动力 在 energy 映射里的取值
+            var ENERGY_CODE = { bev: 1, phev: 2, erev: 3, dm: 4 };
 
             function levelOf(type) {
                 return LEVELS[type] || ['其他', 'other'];
+            }
+
+            // 「6.18-9.18万」/「180.00万」-> 指导价中值（万元）
+            function priceMid(str) {
+                var s = String(str == null ? '' : str);
+                var m = s.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+                if (m) return (parseFloat(m[1]) + parseFloat(m[2])) / 2;
+                var one = s.match(/(\d+(?:\.\d+)?)/);
+                return one ? parseFloat(one[1]) : null;
+            }
+
+            function priceBucket(str) {
+                var mid = priceMid(str);
+                if (mid == null) return '';
+                if (mid < 10) return 'p1';
+                if (mid < 15) return 'p2';
+                if (mid < 20) return 'p3';
+                if (mid < 30) return 'p4';
+                if (mid < 50) return 'p5';
+                return 'p6';
             }
 
             // 品牌名归一（同一品牌的历史别名合并）
@@ -1658,7 +1764,7 @@
             }
 
             function isSubEnergy(v) {
-                return v === 'bev' || v === 'phev' || v === 'erev';
+                return v === 'bev' || v === 'phev' || v === 'erev' || v === 'dm';
             }
 
             var state = {
@@ -1667,7 +1773,8 @@
                 month: '',
                 year: '',
                 energy: [],
-                body: [],
+                level: [],
+                price: [],
                 merge: 'none',
                 caliber: 'both',
                 sortKey: 'count',
@@ -1798,10 +1905,10 @@
             }
 
             // ---------- 请求数据 ----------
-            // 能源筛选支持多选，空 = 全部：
-            //   含 fuel 时以 car_all 为底，否则用 car_new_energy
-            //   燃油 = car_all 里不在新能源榜的车（源站的能源细分并不覆盖全部历史月份，
-            //          用它做差集最准）；纯电/插混/增程 = energy 映射里类型命中
+            // 能源筛选支持多选，空 = 全部。
+            //   新能源 = 源站新能源榜（new_energy_type 1/2/3）∪ 双动力（4）
+            //   燃油 = 全量里剩下的车（新能源榜不含它们，用差集最准）
+            //   双动力是同车系同时有纯电和增程版本，源站单列的一类，只能整类计入
             function compose(base, picked, neSet, energyMap) {
                 if (!picked.length) return base;
 
@@ -1818,13 +1925,10 @@
                     var it = base[key];
                     if (!it) return;
                     var sid = String(it.series_id);
-                    var inNe = neSet ? !!neSet[sid] : true;
-                    var keep;
-                    if (!inNe) {
-                        keep = wantFuel;
-                    } else {
-                        keep = wantAllNe || codes.indexOf(Number(energyMap[sid] || 0)) > -1;
-                    }
+                    var code = Number(energyMap[sid] || 0);
+                    // 新能源 = 能源映射里有编码（含双动力 4），或出现在新能源榜里
+                    var isNev = code > 0 || !!(neSet && neSet[sid]);
+                    var keep = (wantFuel && !isNev) || (wantAllNe && isNev) || codes.indexOf(code) > -1;
                     if (keep) {
                         out[key] = it;
                         order.push(key);
@@ -1854,12 +1958,9 @@
 
                 var wantFuel = picked.indexOf('fuel') > -1;
                 var wantAllNe = picked.indexOf('ne') > -1;
-                var wantSub = picked.some(isSubEnergy);
-                // 没选或选了燃油 -> 以全量数据为底，否则直接用新能源表
-                var useAll = !picked.length || wantFuel;
-
-                var needNeSet = wantFuel && !wantAllNe;
-                var needEnergy = wantSub && !wantAllNe;
+                // 一律以全量数据为底：双动力车型不在新能源榜里，拿新能源榜当底会漏
+                var needNeSet = picked.length > 0 && (wantFuel || wantAllNe);
+                var needEnergy = picked.length > 0;
 
                 function pathOf(name) {
                     return isYear ? (date + '/year_merge-' + name + '.js')
@@ -1869,7 +1970,7 @@
                     return isYear ? ('year_merge-' + name + '_' + date) : (name + '_' + date);
                 }
 
-                var baseName = useAll ? 'car_all' : 'car_new_energy';
+                var baseName = 'car_all';
                 var tasks = [loadData(keyOf(baseName), pathOf(baseName))];
                 var neIndex = -1;
                 var mapIndex = -1;
@@ -1885,11 +1986,11 @@
                 setLoading(true);
                 Promise.all(tasks).then(function (res) {
                     if (token !== state.token) return;
-                    var neData = useAll ? (neIndex > -1 ? res[neIndex] : null) : res[0];
+                    var neData = neIndex > -1 ? res[neIndex] : null;
                     var map = mapIndex > -1 ? (res[mapIndex] || {}) : {};
 
                     var neSet = null;
-                    if (useAll && neData) {
+                    if (neData) {
                         neSet = {};
                         (neData.order || []).forEach(function (k) {
                             var it = neData[k];
@@ -1903,6 +2004,10 @@
                         if (cov < 0.9) {
                             state.notice = '该月的能源细分数据源站收录不全（约 ' + Math.round(cov * 100) + '%），纯电/插混/增程结果可能偏少';
                         }
+                    }
+                    // 2023-10 之前源站不返回当月能源明细，历史文件里存的是当前快照
+                    if (needEnergy && (isYear ? Number(date) < 2024 : date < '202310')) {
+                        state.notice = '2023 年 10 月前的能源细分是源站当前快照，纯电/插混/增程归类仅供参考';
                     }
 
                     state.raw = compose(res[0], picked, neSet, map);
@@ -1940,10 +2045,18 @@
                     if (it && it.series_name) list.push(it);
                 }
 
-                // 车型（轿车/SUV/MPV/微型车/跑车）多选筛选
-                if (state.body.length) {
+                // 级别（车身形式 + 尺寸段）多选筛选
+                if (state.level.length) {
                     list = list.filter(function (it) {
-                        return state.body.indexOf(levelOf(it.outter_detail_type)[1]) > -1;
+                        return state.level.indexOf(String(it.outter_detail_type)) > -1;
+                    });
+                }
+
+                // 价格段筛选（按指导价中值）
+                if (state.price.length) {
+                    list = list.filter(function (it) {
+                        var b = priceBucket(it.price);
+                        return b && state.price.indexOf(b) > -1;
                     });
                 }
 
@@ -2049,11 +2162,28 @@
                 }
             }
 
+            // 选中的级别正好覆盖某个车身形式的全部级别时，显示「SUV」而不是 5 个级别名
+            function levelLabel() {
+                var picked = state.level;
+                if (!picked.length) return '';
+                var names = [];
+                LEVEL_GROUPS.forEach(function (g) {
+                    var keys = g.items.map(function (it) { return String(it[0]); });
+                    var hit = keys.filter(function (k) { return picked.indexOf(k) > -1; });
+                    if (!hit.length) return;
+                    if (hit.length === keys.length) names.push(g.name);
+                    else hit.forEach(function (k) { names.push(LEVEL_NAME[k]); });
+                });
+                if (!names.length) return '';
+                return names.length > 3 ? names.slice(0, 3).join('/') + ' 等' + names.length + ' 项' : names.join('/');
+            }
+
             function renderTitle() {
                 var isYear = state.mode === 'year';
-                var bodyLabel = state.body.map(function (v) { return BODY_LABEL[v]; }).join('/');
+                var bodyLabel = levelLabel();
+                var priceLabel = state.price.map(function (v) { return PRICE_LABEL[v]; }).join('/');
                 var energyLabel = state.energy.map(function (v) { return ENERGY_LABEL[v]; }).join('/');
-                var label = [bodyLabel, energyLabel].filter(Boolean).join(' · ') || '全部车型';
+                var label = [bodyLabel, priceLabel, energyLabel].filter(Boolean).join(' · ') || '全部车型';
                 var sub = '月度榜单';
                 if (isYear) {
                     var lastMonth = parseInt(state.lastDate.slice(4), 10);
@@ -2524,9 +2654,11 @@
                 });
 
                 var date = state.mode === 'year' ? state.year : state.month;
-                var tags = state.body.map(function (v) { return BODY_LABEL[v]; })
-                    .concat(state.energy.map(function (v) { return ENERGY_LABEL[v]; }));
-                var name = '汽车销量_' + date + '_' + (tags.join('_') || '全部') + '.csv';
+                var tags = [levelLabel()]
+                    .concat(state.price.map(function (v) { return PRICE_LABEL[v]; }))
+                    .concat(state.energy.map(function (v) { return ENERGY_LABEL[v]; }))
+                    .filter(Boolean);
+                var name = '汽车销量_' + date + '_' + (tags.join('_') || '全部').replace(/[\\/:*?"<>|]/g, '-') + '.csv';
                 var blob = new Blob(['\ufeff' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
                 var a = document.createElement('a');
                 a.href = URL.createObjectURL(blob);
@@ -2567,7 +2699,7 @@
                 var text = box.querySelector('.multi-text');
                 var panel = box.querySelector('.multi-panel');
                 var labels = {};
-                opts.forEach(function (o) { labels[o[0]] = o[1]; });
+                opts.forEach(function (o) { labels[o[0]] = o[2] || o[1]; });
 
                 panel.innerHTML = opts.map(function (o) {
                     return '<label><input type="checkbox" value="' + o[0] + '">' + o[1] + '</label>';
@@ -2617,6 +2749,85 @@
                 sync();
             }
 
+            // 级别多选：按车身形式分组，组头可一键全选 / 清空
+            function bindLevelMulti(id, onChange) {
+                var box = $(id);
+                var btn = box.querySelector('.multi-btn');
+                var text = box.querySelector('.multi-text');
+                var panel = box.querySelector('.multi-panel');
+
+                var html = '';
+                LEVEL_GROUPS.forEach(function (g) {
+                    html += '<div class="grp"><span>' + g.name + '</span>' +
+                        '<button type="button" class="grp-btn" data-group="' + g.key + '">全选</button></div>';
+                    g.items.forEach(function (it) {
+                        html += '<label><input type="checkbox" value="' + it[0] + '" data-group="' + g.key + '">' +
+                            it[1] + '</label>';
+                    });
+                });
+                panel.innerHTML = html + '<button type="button" class="reset">显示全部</button>';
+
+                function keysOf(groupKey) {
+                    var g = LEVEL_GROUPS.filter(function (x) { return x.key === groupKey; })[0];
+                    return g ? g.items.map(function (it) { return String(it[0]); }) : [];
+                }
+
+                function sync() {
+                    var picked = state.level;
+                    Array.prototype.forEach.call(panel.querySelectorAll('input'), function (inp) {
+                        inp.checked = picked.indexOf(inp.value) > -1;
+                    });
+                    Array.prototype.forEach.call(panel.querySelectorAll('.grp-btn'), function (b) {
+                        var keys = keysOf(b.getAttribute('data-group'));
+                        var all = keys.length > 0 && keys.every(function (k) { return picked.indexOf(k) > -1; });
+                        b.textContent = all ? '清空' : '全选';
+                    });
+                    box.classList.toggle('picked', picked.length > 0);
+                    text.textContent = picked.length ? levelLabel() : '全部车型';
+                }
+
+                btn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    var wasOpen = box.classList.contains('open');
+                    closeAllMulti();
+                    if (!wasOpen) box.classList.add('open');
+                });
+
+                panel.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    var grpBtn = e.target.closest('.grp-btn');
+                    if (grpBtn) {
+                        var keys = keysOf(grpBtn.getAttribute('data-group'));
+                        var all = keys.every(function (k) { return state.level.indexOf(k) > -1; });
+                        keys.forEach(function (k) {
+                            var i = state.level.indexOf(k);
+                            if (all && i > -1) state.level.splice(i, 1);
+                            if (!all && i === -1) state.level.push(k);
+                        });
+                        sync();
+                        onChange();
+                        return;
+                    }
+                    if (e.target.classList.contains('reset')) {
+                        state.level = [];
+                        sync();
+                        onChange();
+                    }
+                });
+
+                panel.addEventListener('change', function (e) {
+                    if (e.target.type !== 'checkbox') return;
+                    var v = e.target.value;
+                    var i = state.level.indexOf(v);
+                    if (e.target.checked && i === -1) state.level.push(v);
+                    if (!e.target.checked && i > -1) state.level.splice(i, 1);
+                    sync();
+                    onChange();
+                });
+
+                sync();
+            }
+
             document.addEventListener('click', closeAllMulti);
             document.addEventListener('keydown', function (e) {
                 if (e.key === 'Escape') closeAllMulti();
@@ -2628,7 +2839,15 @@
                 refresh();
             });
 
-            bindMulti('bodyMulti', BODY_OPTS, 'body', '全部车型', function () {
+            bindLevelMulti('levelMulti', function () {
+                if (state.raw) {
+                    state.sortKey = 'count';
+                    state.sortDir = 'desc';
+                    render();
+                }
+            });
+
+            bindMulti('priceMulti', PRICE_OPTS, 'price', '全部价位', function () {
                 if (state.raw) {
                     state.sortKey = 'count';
                     state.sortDir = 'desc';

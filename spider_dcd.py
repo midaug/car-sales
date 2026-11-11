@@ -52,7 +52,8 @@ page_size = 100
 max_offset = page_size * 100
 
 # 能源类型：接口用 new_energy_type 区分，1=纯电 2=插混 3=增程
-energy_types = {'1': 1, '2': 2, '3': 3}
+# 4 是「同车系同时有纯电和增程版本」（双动力），2025 年后车型越来越多，需要一并收取
+energy_types = {'1': 1, '2': 2, '3': 3, '4': 4}
 energy_url = api_url + ('?aid=1839&app_name=auto_web_pc&city_name=&count={count}&offset={offset}'
                         '&month={month}&new_energy_type={net}&rank_data_type=11&brand_id=&price='
                         '&manufacturer=&outter_detail_type=&nation=0')
@@ -208,7 +209,7 @@ def start(url, dateStr, car_type):
 
 
 def requestEnergyMap(dateStr, dir):
-    """抓取一个月的能源类型映射 {series_id: 1|2|3}，纯电/插混/增程分开取。
+    """抓取一个月的能源类型映射 {series_id: 1|2|3|4}，纯电/插混/增程/双动力分开取。
     只存 id 和类型，一个月大约 4KB。返回 (data, created)"""
     jsPath = '{dir}/energy.js'.format(dir=dir)
     key = 'energy_{0}'.format(dateStr)
@@ -332,7 +333,7 @@ if __name__ == "__main__":
     # 全部车型url（{month} 月份，{offset} 翻页偏移）
     car_all_url = api_url + '?aid=1839&app_name=auto_web_pc&city_name=&count={count}&offset={offset}&month={month}&new_energy_type=&rank_data_type=11&brand_id=&price=&manufacturer=&outter_detail_type=&nation=0'
     # 新能源销量url
-    car_new_energy_url = api_url + '?aid=1839&app_name=auto_web_pc&city_name=&count={count}&offset={offset}&month={month}&new_energy_type=1%2C2%2C3&rank_data_type=11&brand_id=&price=&manufacturer=&outter_detail_type=&nation=0'
+    car_new_energy_url = api_url + '?aid=1839&app_name=auto_web_pc&city_name=&count={count}&offset={offset}&month={month}&new_energy_type=1%2C2%2C3%2C4&rank_data_type=11&brand_id=&price=&manufacturer=&outter_detail_type=&nation=0'
     # 开始时间
     start_month = os.environ.get('START_MONTH', '202002')
     # 时间格式化

@@ -581,6 +581,151 @@
             font-size: 13px;
         }
 
+        .tip-trigger {
+            cursor: help;
+            border-bottom: 1px dashed rgba(123, 138, 161, .5);
+            transition: color .15s ease, border-color .15s ease;
+        }
+
+        .m-brands {
+            display: none;
+        }
+
+        .tip-trigger:hover {
+            color: var(--accent);
+            border-bottom-color: currentColor;
+        }
+
+        .tip-panel {
+            position: fixed;
+            z-index: 60;
+            width: 300px;
+            max-width: calc(100vw - 24px);
+            padding: 12px 14px;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            background: var(--card);
+            box-shadow: 0 24px 48px -24px rgba(15, 27, 45, .38), 0 2px 8px -2px rgba(15, 27, 45, .08);
+            opacity: 0;
+            transform: translateY(4px);
+            pointer-events: none;
+            transition: opacity .12s ease, transform .12s ease;
+        }
+
+        .tip-panel.show {
+            opacity: 1;
+            transform: none;
+            pointer-events: auto;
+        }
+
+        .tip-head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .tip-head b {
+            font-size: 13px;
+            color: var(--ink);
+        }
+
+        .tip-head span {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .tip-body {
+            max-height: 260px;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            margin: 0 -6px;
+            padding: 0 6px 2px;
+        }
+
+        .tip-body::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .tip-body::-webkit-scrollbar-thumb {
+            background: #dbe3ef;
+            border-radius: 999px;
+        }
+
+        .tip-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .tip-chip {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 5px;
+            padding: 4px 8px;
+            border-radius: 999px;
+            background: var(--accent-soft);
+            color: var(--ink-2);
+            font-size: 12px;
+        }
+
+        .tip-chip i {
+            font-style: normal;
+            font-size: 11px;
+            color: var(--muted);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .tip-group + .tip-group {
+            margin-top: 10px;
+        }
+
+        .tip-group-head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+            padding-bottom: 4px;
+            margin-bottom: 4px;
+            border-bottom: 1px dashed var(--line);
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--ink);
+        }
+
+        .tip-group-head i {
+            font-style: normal;
+            font-weight: 400;
+            font-size: 11px;
+            color: var(--muted);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .tip-item {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 3px 0;
+            font-size: 12px;
+            color: var(--ink-2);
+        }
+
+        .tip-item > span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .tip-item i {
+            flex: none;
+            font-style: normal;
+            font-size: 11px;
+            color: var(--muted);
+            font-variant-numeric: tabular-nums;
+        }
+
         thead th.col-share {
             text-align: right;
         }
@@ -888,14 +1033,18 @@
                 width: 44px;
             }
 
-            /* 集团维度列更多，移动端只保留排名 / 集团 / 品牌数 / 销量 */
-            body.merge-group .col-models,
+            /* 集团维度列更多，移动端把品牌数并到车型列下方 */
+            body.merge-group .col-brands,
             body.merge-group .col-share {
                 display: none;
             }
 
-            body.merge-group .col-brands {
-                width: 76px;
+            body.merge-group .m-brands {
+                display: block;
+                font-style: normal;
+                font-size: 11px;
+                color: var(--muted);
+                margin-top: 2px;
             }
 
             tbody td,
@@ -1020,6 +1169,7 @@
 
         <footer>
             数据每月自动更新 · 销量单位为「辆」<br>
+            在榜品牌 / 在榜车型的数字可悬浮（移动端点按）查看明细<br>
             集团口径：合资品牌按外方品牌归属（如一汽丰田 / 广汽丰田 → 丰田）<br>
             排名仅供参考，不构成任何购买建议
         </footer>
@@ -1137,6 +1287,7 @@
                 sortDir: 'desc',
                 keyword: '',
                 rows: [],
+                viewRows: [],
                 raw: null,
                 notice: '',
                 token: 0
@@ -1436,7 +1587,7 @@
                         map[name] = {
                             name: name, series: name, brand: it.brand_name || name, sub: it.sub_brand_name || name,
                             count: 0, models: 0, topModel: '', topCount: -1,
-                            brandCount: 0, topBrand: '', brandList: [], brandCounts: {}
+                            brandCount: 0, topBrand: '', brandList: [], brandCounts: {}, modelList: []
                         };
                     }
                     var g = map[name];
@@ -1454,6 +1605,7 @@
                         g.brandCounts[bn] += c;
                         if (!g.topBrand || g.brandCounts[bn] > g.brandCounts[g.topBrand]) g.topBrand = bn;
                     }
+                    g.modelList.push({ n: it.series_name, c: c, b: bn || name });
                 });
                 return Object.keys(map).map(function (k) { return map[k]; });
             }
@@ -1674,7 +1826,9 @@
             }
 
             function renderBody() {
+                hideTip();
                 var rows = visibleRows();
+                state.viewRows = rows;
                 var max = 1;
                 var total = 0;
                 state.rows.forEach(function (r) {
@@ -1685,7 +1839,7 @@
 
                 var isNone = state.merge === 'none';
                 var showTrend = isNone && state.mode === 'month';
-                $('tbody').innerHTML = rows.map(function (r) {
+                $('tbody').innerHTML = rows.map(function (r, i) {
                     var rankCls = r.rank <= 3 ? ' r' + r.rank : '';
                     var tds = '<td><span class="rank' + rankCls + '">' + r.rank + '</span></td>';
 
@@ -1711,9 +1865,13 @@
                             (subText ? '<span class="sub-name">' + esc(subText) + '</span>' : '') +
                             '</span></td>';
                         if (state.merge === 'group') {
-                            tds += '<td class="col-brands"><span class="muted-num">' + num(r.brandCount) + ' 个</span></td>';
+                            tds += '<td class="col-brands"><span class="muted-num tip-trigger" data-tip="brands" data-row="' + i + '">' + num(r.brandCount) + ' 个</span></td>';
                         }
-                        tds += '<td class="col-models"><span class="muted-num">' + num(r.models) + ' 款</span></td>';
+                        var modelCell = '<span class="muted-num tip-trigger" data-tip="models" data-row="' + i + '">' + num(r.models) + ' 款</span>';
+                        if (state.merge === 'group') {
+                            modelCell += '<i class="m-brands tip-trigger" data-tip="brands" data-row="' + i + '">' + num(r.brandCount) + ' 品牌</i>';
+                        }
+                        tds += '<td class="col-models">' + modelCell + '</td>';
                         tds += '<td class="col-share"><span class="share">' + share.toFixed(1) + '%</span></td>';
                     }
 
@@ -1730,6 +1888,145 @@
                     ? '共 ' + count + ' 条'
                     : '筛选出 ' + rows.length + ' / ' + count + ' 条';
             }
+
+            // ---------- 在榜品牌 / 在榜车型 悬浮明细 ----------
+            var tipTimer = 0;
+            var tipEl = null;
+            var tipOwner = null;
+
+            function ensureTip() {
+                if (!tipEl) {
+                    tipEl = document.createElement('div');
+                    tipEl.className = 'tip-panel';
+                    document.body.appendChild(tipEl);
+                    tipEl.addEventListener('mouseenter', function () { clearTimeout(tipTimer); });
+                    tipEl.addEventListener('mouseleave', hideTipSoon);
+                }
+                return tipEl;
+            }
+
+            function hideTip() {
+                clearTimeout(tipTimer);
+                tipOwner = null;
+                if (tipEl) tipEl.classList.remove('show');
+            }
+
+            function hideTipSoon() {
+                clearTimeout(tipTimer);
+                tipTimer = setTimeout(hideTip, 200);
+            }
+
+            function brandsTipHtml(r) {
+                var items = (r.brandList || []).map(function (b) {
+                    return { name: b, count: r.brandCounts[b] || 0 };
+                }).sort(function (a, b) { return b.count - a.count; });
+
+                var html = '<div class="tip-head"><b>在榜品牌</b><span>' + items.length + ' 个</span></div>' +
+                    '<div class="tip-body"><div class="tip-chips">';
+                items.forEach(function (x) {
+                    html += '<span class="tip-chip">' + esc(x.name) + '<i>' + num(x.count) + '</i></span>';
+                });
+                return html + '</div></div>';
+            }
+
+            function tipModelGroupHtml(label, items) {
+                var sum = 0;
+                items.forEach(function (x) { sum += x.c; });
+                var html = '<div class="tip-group"><div class="tip-group-head"><span>' + esc(label) + '</span>' +
+                    '<i>' + items.length + ' 款 · ' + num(sum) + '</i></div>';
+                items.forEach(function (x) {
+                    html += '<div class="tip-item"><span>' + esc(x.n) + '</span><i>' + num(x.c) + '</i></div>';
+                });
+                return html + '</div>';
+            }
+
+            function modelsTipHtml(r) {
+                var list = r.modelList || [];
+                var html = '<div class="tip-head"><b>在榜车型</b><span>' + list.length + ' 款</span></div>' +
+                    '<div class="tip-body">';
+
+                if (state.merge === 'group') {
+                    // 集团维度：按品牌分组展示
+                    var order = (r.brandList || []).slice().sort(function (a, b) {
+                        return (r.brandCounts[b] || 0) - (r.brandCounts[a] || 0);
+                    });
+                    var known = {};
+                    order.forEach(function (b) {
+                        known[b] = 1;
+                        var items = list.filter(function (x) { return x.b === b; });
+                        if (items.length) html += tipModelGroupHtml(b, items);
+                    });
+                    var rest = list.filter(function (x) { return !known[x.b]; });
+                    if (rest.length) html += tipModelGroupHtml('其他', rest);
+                } else {
+                    list.forEach(function (x) {
+                        html += '<div class="tip-item"><span>' + esc(x.n) + '</span><i>' + num(x.c) + '</i></div>';
+                    });
+                }
+                return html + '</div>';
+            }
+
+            function showTip(target, kind, idx) {
+                var r = state.viewRows[idx];
+                if (!r) return;
+                var panel = ensureTip();
+                panel.classList.remove('show');
+                panel.innerHTML = kind === 'brands' ? brandsTipHtml(r) : modelsTipHtml(r);
+
+                var rect = target.getBoundingClientRect();
+                var pw = panel.offsetWidth;
+                var ph = panel.offsetHeight;
+                var gap = 8;
+                var left = Math.min(Math.max(12, rect.right - pw), window.innerWidth - pw - 12);
+                var top = rect.bottom + gap;
+                if (top + ph > window.innerHeight - 12) top = Math.max(12, rect.top - ph - gap);
+
+                panel.style.left = left + 'px';
+                panel.style.top = top + 'px';
+                panel.classList.add('show');
+                tipOwner = target;
+            }
+
+            function tipTriggerOf(node) {
+                return node && node.closest ? node.closest('.tip-trigger') : null;
+            }
+
+            document.addEventListener('mouseover', function (e) {
+                var t = tipTriggerOf(e.target);
+                if (!t) return;
+                clearTimeout(tipTimer);
+                if (t !== tipOwner) showTip(t, t.getAttribute('data-tip'), Number(t.getAttribute('data-row')));
+            });
+
+            document.addEventListener('mouseout', function (e) {
+                var t = tipTriggerOf(e.target);
+                if (!t) return;
+                var to = e.relatedTarget;
+                if (to && (t.contains(to) || (tipEl && tipEl.contains(to)))) return;
+                hideTipSoon();
+            });
+
+            document.addEventListener('click', function (e) {
+                var t = tipTriggerOf(e.target);
+                if (t) {
+                    if (t !== tipOwner) {
+                        showTip(t, t.getAttribute('data-tip'), Number(t.getAttribute('data-row')));
+                    }
+                    return;
+                }
+                if (tipEl && tipEl.contains(e.target)) return;
+                hideTip();
+            });
+
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') hideTip();
+            });
+
+            window.addEventListener('scroll', function (e) {
+                if (tipEl && tipEl.contains(e.target)) return;
+                hideTip();
+            }, true);
+            window.addEventListener('resize', hideTip);
 
             // ---------- 导出 ----------
             function exportCsv() {

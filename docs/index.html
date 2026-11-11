@@ -111,7 +111,7 @@
         .toolbar {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
             flex-wrap: wrap;
             padding: 12px 14px;
             margin-bottom: 18px;
@@ -151,6 +151,12 @@
             background: #fff;
             color: var(--ink);
             box-shadow: 0 1px 2px rgba(15, 27, 45, .12);
+        }
+
+        .seg-sm button {
+            padding: 5px 7px;
+            font-size: 11.5px;
+            border-radius: 8px;
         }
 
         .select {
@@ -306,7 +312,7 @@
         }
 
         .search input {
-            width: 230px;
+            width: 176px;
             padding: 9px 12px 9px 34px;
             border: 1px solid var(--line);
             border-radius: 12px;
@@ -474,7 +480,8 @@
 
         .notice {
             padding: 3px 9px;
-            border-radius: 999px;
+            max-width: 100%;
+            border-radius: 9px;
             background: #fff5e6;
             color: #a8661a;
             font-size: 12px;
@@ -724,6 +731,28 @@
             font-size: 11px;
             color: var(--muted);
             font-variant-numeric: tabular-nums;
+        }
+
+        .tip-sub {
+            margin-top: 9px;
+            padding-top: 8px;
+            border-top: 1px dashed var(--line);
+        }
+
+        .tip-sub-head {
+            font-size: 11px;
+            color: var(--muted);
+            margin-bottom: 4px;
+        }
+
+        .jv-tag {
+            font-style: normal;
+            font-size: 10px;
+            color: #7a5af8;
+            background: #f1edff;
+            border-radius: 4px;
+            padding: 0 4px;
+            margin-left: 5px;
         }
 
         thead th.col-share {
@@ -1009,6 +1038,63 @@
             border-top: 1px dashed var(--line);
         }
 
+        .cal-sec {
+            margin: 14px 0 6px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: .04em;
+            color: var(--muted);
+        }
+
+        .jv-row {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            padding: 5px 0;
+            font-size: 12px;
+            border-bottom: 1px dashed #f0f3f8;
+        }
+
+        .jv-row b {
+            flex: none;
+            width: 116px;
+            font-weight: 600;
+            color: var(--ink);
+        }
+
+        .jv-row span {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+
+        .jv-row i {
+            font-style: normal;
+            padding: 1px 7px;
+            border-radius: 5px;
+            font-size: 11px;
+        }
+
+        .jv-out { background: #eef4ff; color: #2f5fd0; }
+        .jv-in { background: #eefaf3; color: #1c7d52; }
+
+        .jv-row em {
+            font-style: normal;
+            color: var(--muted);
+            font-size: 11px;
+        }
+
+        .jv-row u {
+            flex: none;
+            width: 130px;
+            text-align: right;
+            text-decoration: none;
+            color: var(--muted);
+            font-size: 11px;
+        }
+
         .caliber-tip {
             font-size: 11px;
             color: var(--muted);
@@ -1117,6 +1203,31 @@
                 flex: 1 1 auto;
             }
 
+            .jv-row {
+                flex-wrap: wrap;
+                gap: 3px 8px;
+            }
+
+            .jv-row b {
+                width: 100%;
+            }
+
+            .jv-row u {
+                width: auto;
+                text-align: left;
+                margin-left: auto;
+            }
+
+            .table-head {
+                flex-wrap: wrap;
+            }
+
+            .head-meta {
+                width: 100%;
+                justify-content: flex-start;
+                gap: 8px;
+            }
+
             .col-trend,
             .col-price,
             .col-brand,
@@ -1205,7 +1316,7 @@
         <header class="hero">
             <div>
                 <h1>汽车销量<em>排行</em></h1>
-                <p>乘用车月度销量数据 · 支持车系 / 厂商 / 品牌 / 集团维度查看</p>
+                <p>乘用车月度销量数据 · 支持车系 / 厂商 / 品牌 / 集团（含合资双计、华为系）</p>
             </div>
             <div class="pill"><i></i><span id="updatedAt">数据加载中…</span></div>
         </header>
@@ -1242,6 +1353,11 @@
                 <option value="brand_name">按品牌合并</option>
                 <option value="group">按集团合并</option>
             </select>
+            <div class="seg seg-sm" id="caliberSeg" hidden aria-label="合资归属口径">
+                <button type="button" data-value="out">品牌方</button>
+                <button type="button" data-value="local">中方</button>
+                <button type="button" data-value="both" class="active">双计</button>
+            </div>
             <span class="spacer"></span>
             <div class="search">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -1249,7 +1365,7 @@
                     <circle cx="11" cy="11" r="7"></circle>
                     <line x1="20" y1="20" x2="16.5" y2="16.5"></line>
                 </svg>
-                <input id="q" type="search" placeholder="搜索品牌 / 集团 / 车系" autocomplete="off">
+                <input id="q" type="search" placeholder="搜索品牌 / 车系" autocomplete="off">
             </div>
             <button class="btn" id="exportBtn" type="button">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -1294,7 +1410,8 @@
         <footer>
             数据每月自动更新 · 销量单位为「辆」<br>
             在榜品牌 / 在榜车型的数字可悬浮（移动端点按）查看明细<br>
-            集团口径：按品牌所属集团（控股 / 并表）归属，合资品牌按外方品牌归属（一汽丰田 / 广汽丰田 → 丰田）<br>
+            集团口径：合资车型同时计入品牌方集团与中方集团（上汽大众 → 大众集团 / 上汽集团），可切换「品牌方 / 中方 / 双计」<br>
+            华为系作为叠加归属并入集团榜：问界同时计入赛力斯集团与华为系<br>
             <details class="caliber">
                 <summary>查看集团归属明细（<span id="caliberStat">—</span>）</summary>
                 <div class="caliber-list" id="caliberList"></div>
@@ -1348,10 +1465,9 @@
                 '北京': '北京越野'
             };
 
-            // 品牌 -> 集团（更大维度合并）
-            // 口径：按品牌所属集团（控股 / 并表）归属；合资品牌归外方母公司
-            //   一汽丰田 / 广汽丰田 -> 丰田，一汽奥迪 / 上汽奥迪 -> 奥迪
-            //   吉利汽车 / 吉利银河 / 领克 / 极氪 -> 吉利控股集团
+            // ============ 集团归属（自有品牌 + 合资双向归属） ============
+            // 这里只放「自有 / 控股品牌」；合资公司单独在下面的 JV 表里配
+            //   一汽丰田 / 广汽丰田 -> 丰田，吉利汽车 / 吉利银河 / 领克 / 极氪 -> 吉利控股集团
             // 未列出的品牌（如特斯拉、理想、小鹏、小米、马自达）各自成一个集团，不会丢数据
             var GROUPS = [
                 { name: '比亚迪集团', brands: ['比亚迪', '腾势', '方程豹', '仰望'] },
@@ -1381,7 +1497,7 @@
                     name: '东风集团',
                     brands: ['东风风神', '东风奕派', '东风纳米', '东风风行', '东风风度', '东风富康', '岚图', '猛士', '启辰', '灵悉', '示界']
                 },
-                { name: '一汽集团', brands: ['红旗', '奔腾', '一汽'], note: '一汽-大众 / 一汽丰田等合资品牌归外方集团' },
+                { name: '一汽集团', brands: ['红旗', '奔腾', '一汽'], note: '这里只含自主品牌；一汽-大众 / 一汽丰田等合资销量在「合资厂商」里双向计入' },
                 { name: '北汽集团', brands: ['北京越野', '北京汽车', 'ARCFOX极狐', '享界'] },
                 { name: '江汽集团', brands: ['江淮汽车', '江淮瑞风', '江淮钇为', '思皓', '尊界'] },
                 {
@@ -1404,8 +1520,65 @@
                     note: '与原北汽集团无关，2015 年后脱离北汽、现属山东魏桥；极石由洛轲智能定义、BAW 生产'
                 },
                 { name: '大运集团', brands: ['大运', '远航汽车'], note: '远航是大运旗下的高端新能源品牌' },
-                { name: '鑫源汽车', brands: ['鑫源汽车'] }
+                { name: '鑫源汽车', brands: ['鑫源汽车'] },
+                { name: '江铃集团', brands: ['江铃集团新能源'], note: '另含江铃福特的中方份额' },
+                { name: '华晨集团', brands: ['华晨新日'], note: '另含华晨宝马的中方份额' },
+                { name: '悦达集团', brands: [], note: '仅作为悦达起亚的中方出现' }
             ];
+
+            // 合资厂商：同一批销量同时属于「品牌方集团」与「中方集团」
+            // 键是数据里的 sub_brand_name，比品牌名更精确（大众 -> 上汽大众 / 一汽-大众 / 大众安徽）
+            var JV = {
+                '上汽大众': { out: '大众集团', in: '上汽集团', stake: '50:50' },
+                '一汽-大众': { out: '大众集团', in: '一汽集团', stake: '一汽 60 / 大众 40' },
+                '一汽-大众捷达': { out: '大众集团', in: '一汽集团', stake: '一汽-大众旗下' },
+                '上汽大众斯柯达': { out: '大众集团', in: '上汽集团', stake: '上汽大众旗下' },
+                '一汽奥迪': { out: '大众集团', in: '一汽集团', stake: '一汽 60 / 奥迪 40' },
+                '上汽奥迪': { out: '大众集团', in: '上汽集团', stake: '50:50' },
+                '大众安徽': { out: '大众集团', in: '江汽集团', stake: '大众 75 / 江淮 25' },
+                '一汽丰田': { out: '丰田', in: '一汽集团', stake: '50:50' },
+                '广汽丰田': { out: '丰田', in: '广汽集团', stake: '50:50' },
+                '广汽本田': { out: '本田', in: '广汽集团', stake: '50:50' },
+                '东风本田': { out: '本田', in: '东风集团', stake: '50:50' },
+                '北京奔驰': { out: '奔驰', in: '北汽集团', stake: '北汽 51 / 奔驰 49' },
+                '福建奔驰': { out: '奔驰', in: '北汽集团', stake: '北汽与奔驰合资' },
+                '华晨宝马': { out: '宝马集团', in: '华晨集团', stake: '宝马 75 / 华晨 25' },
+                '光束汽车': { out: '宝马集团', in: '长城汽车集团', stake: '50:50，产电动 MINI' },
+                '上汽通用别克': { out: '通用汽车', in: '上汽集团', stake: '50:50' },
+                '上汽通用雪佛兰': { out: '通用汽车', in: '上汽集团', stake: '50:50' },
+                '上汽通用凯迪拉克': { out: '通用汽车', in: '上汽集团', stake: '50:50' },
+                '长安福特': { out: '福特汽车', in: '长安汽车集团', stake: '50:50' },
+                '长安林肯': { out: '福特汽车', in: '长安汽车集团', stake: '林肯属福特' },
+                '江铃福特': { out: '福特汽车', in: '江铃集团', stake: '江铃汽车与福特合资' },
+                '北京现代': { out: '现代起亚', in: '北汽集团', stake: '50:50' },
+                '起亚': { out: '现代起亚', in: '悦达集团', stake: '悦达起亚' },
+                '起亚(进口)': { out: '现代起亚', in: '悦达集团', stake: '进口渠道' },
+                '东风日产': { out: '日产', in: '东风集团', stake: '东风有限' },
+                '郑州日产': { out: '日产', in: '东风集团', stake: '东风有限旗下' },
+                '东风英菲尼迪': { out: '日产', in: '东风集团', stake: '英菲尼迪属日产' },
+                '东风标致': { out: 'Stellantis', in: '东风集团', stake: '神龙汽车' },
+                '东风雪铁龙': { out: 'Stellantis', in: '东风集团', stake: '神龙汽车' },
+                '神龙汽车': { out: 'Stellantis', in: '东风集团', stake: '50:50' },
+                '长安马自达': { out: '马自达', in: '长安汽车集团', stake: '50:50' },
+                '奇瑞捷豹路虎': { out: '捷豹路虎', in: '奇瑞集团', stake: '50:50' },
+                '一汽海马': { out: '海马汽车', in: '一汽集团', stake: '历史合资' }
+            };
+
+            // 华为系：不单独成一个维度，而是作为「叠加归属」并入集团榜
+            // 问界会同时出现在赛力斯集团和华为系，与合资双计是同一套逻辑
+            var HUAWEI = {
+                name: '华为系',
+                brands: ['问界', '智界', '享界', '尊界', '尚界', '阿维塔', 'ARCFOX极狐'],
+                note: '鸿蒙智行五界（问界 / 智界 / 享界 / 尊界 / 尚界）＋ HI 模式（阿维塔、极狐）。' +
+                    'HI 品牌只有部分车型搭载华为方案，按品牌整体计入偏高；深蓝 / 岚图 / 猛士等仅个别车型合作，未计入。' +
+                    '这批销量与所属集团重复计入。'
+            };
+
+            var HUAWEI_SET = (function () {
+                var m = {};
+                HUAWEI.brands.forEach(function (b) { m[b] = 1; });
+                return m;
+            })();
 
             var GROUP_MAP = (function () {
                 var map = {};
@@ -1459,9 +1632,29 @@
             }
 
             // 未收录的品牌回落为自身，不会丢数据
-            function groupOf(brand) {
-                var b = brandOf(brand);
-                return GROUP_MAP[b] || b || '其他';
+            // 合资厂商同时有「品牌方」和「中方」两个归属，用 sub_brand_name 判定
+            function groupInfoOf(it) {
+                var sub = String(it.sub_brand_name == null ? '' : it.sub_brand_name).trim();
+                var jv = JV[sub];
+                if (jv) return { out: jv.out, local: jv.in, jv: true, stake: jv.stake || '' };
+                var b = brandOf(it.brand_name);
+                var g = GROUP_MAP[b] || b || '其他';
+                return { out: g, local: g, jv: false, stake: '' };
+            }
+
+            // 双计口径下同一批车会同时落到品牌方集团与中方集团
+            function groupsOf(it) {
+                var info = groupInfoOf(it);
+                var out;
+                if (state.caliber === 'out') out = [info.out];
+                else if (state.caliber === 'local') out = [info.local];
+                else out = info.out === info.local ? [info.out] : [info.out, info.local];
+
+                // 华为系是叠加归属：问界既是赛力斯集团，也是华为系
+                if (HUAWEI_SET[brandOf(it.brand_name)] && out.indexOf(HUAWEI.name) === -1) {
+                    out.push(HUAWEI.name);
+                }
+                return out;
             }
 
             function isSubEnergy(v) {
@@ -1476,6 +1669,7 @@
                 energy: [],
                 body: [],
                 merge: 'none',
+                caliber: 'both',
                 sortKey: 'count',
                 sortDir: 'desc',
                 keyword: '',
@@ -1483,6 +1677,8 @@
                 viewRows: [],
                 raw: null,
                 notice: '',
+                marketTotal: 0,
+                jvTotal: 0,
                 token: 0
             };
 
@@ -1751,6 +1947,17 @@
                     });
                 }
 
+                // 市场合计：双计口径下集团合计会大于它，占比一律以它为分母
+                var marketTotal = 0;
+                var jvTotal = 0;
+                list.forEach(function (it) {
+                    var c = Number(it.count) || 0;
+                    marketTotal += c;
+                    if (groupInfoOf(it).jv) jvTotal += c;
+                });
+                state.marketTotal = marketTotal;
+                state.jvTotal = jvTotal;
+
                 if (merge === 'none') {
                     return list.map(function (it) {
                         return {
@@ -1768,39 +1975,55 @@
                     });
                 }
 
-                var nameOf = merge === 'group'
-                    ? function (it) { return groupOf(it.brand_name); }
-                    : merge === 'brand_name'
-                        ? function (it) { return brandOf(it.brand_name) || '未知'; }
-                        : function (it) { return it[merge] || '未知'; };
+                var keyOf;
+                if (merge === 'group') {
+                    keyOf = function (it) { return groupsOf(it); };
+                } else if (merge === 'brand_name') {
+                    keyOf = function (it) { return [brandOf(it.brand_name) || '未知']; };
+                } else {
+                    keyOf = function (it) { return [it[merge] || '未知']; };
+                }
 
                 var map = {};
                 list.forEach(function (it) {
-                    var name = nameOf(it);
+                    var names = keyOf(it);
+                    if (!names.length) return;
                     var c = Number(it.count) || 0;
-                    if (!map[name]) {
-                        map[name] = {
-                            name: name, series: name, brand: it.brand_name || name, sub: it.sub_brand_name || name,
-                            count: 0, models: 0, topModel: '', topCount: -1,
-                            brandCount: 0, topBrand: '', brandList: [], brandCounts: {}, modelList: []
-                        };
-                    }
-                    var g = map[name];
-                    g.count += c;
-                    g.models += 1;
-                    if (c > g.topCount) { g.topCount = c; g.topModel = it.series_name; }
-
                     var bn = brandOf(it.brand_name);
-                    if (bn) {
-                        if (!g.brandCounts[bn]) {
-                            g.brandCounts[bn] = 0;
-                            g.brandList.push(bn);
-                            g.brandCount += 1;
+                    var sn = String(it.sub_brand_name == null ? '' : it.sub_brand_name).trim();
+
+                    names.forEach(function (name) {
+                        if (!map[name]) {
+                            map[name] = {
+                                name: name, series: name, brand: it.brand_name || name, sub: it.sub_brand_name || name,
+                                count: 0, models: 0, topModel: '', topCount: -1,
+                                brandCount: 0, topBrand: '', brandList: [], brandCounts: {},
+                                subList: [], subCounts: {}, modelList: []
+                            };
                         }
-                        g.brandCounts[bn] += c;
-                        if (!g.topBrand || g.brandCounts[bn] > g.brandCounts[g.topBrand]) g.topBrand = bn;
-                    }
-                    g.modelList.push({ n: it.series_name, c: c, b: bn || name });
+                        var g = map[name];
+                        g.count += c;
+                        g.models += 1;
+                        if (c > g.topCount) { g.topCount = c; g.topModel = it.series_name; }
+
+                        if (bn) {
+                            if (!g.brandCounts[bn]) {
+                                g.brandCounts[bn] = 0;
+                                g.brandList.push(bn);
+                                g.brandCount += 1;
+                            }
+                            g.brandCounts[bn] += c;
+                            if (!g.topBrand || g.brandCounts[bn] > g.brandCounts[g.topBrand]) g.topBrand = bn;
+                        }
+                        if (sn) {
+                            if (!g.subCounts[sn]) {
+                                g.subCounts[sn] = 0;
+                                g.subList.push(sn);
+                            }
+                            g.subCounts[sn] += c;
+                        }
+                        g.modelList.push({ n: it.series_name, c: c, b: bn || name });
+                    });
                 });
                 return Object.keys(map).map(function (k) { return map[k]; });
             }
@@ -1812,12 +2035,18 @@
                 state.rows = rows;
                 document.body.classList.toggle('merge-group', state.merge === 'group');
                 document.body.classList.toggle('merge-brand', state.merge === 'brand_name' || state.merge === 'sub_brand_name');
+                $('caliberSeg').hidden = state.merge !== 'group';
 
                 renderTitle();
                 renderStats();
                 renderHead();
                 renderBody();
-                showEmpty(false);
+
+                if (!rows.length) {
+                    showEmpty(true, '暂无数据', '该时间段还没有销量数据');
+                } else {
+                    showEmpty(false);
+                }
             }
 
             function renderTitle() {
@@ -1835,17 +2064,35 @@
                 $('tableTitle').innerHTML = (isYear ? state.year + '年' : monthText(state.month)) +
                     ' · ' + label + '销量<span id="tableSub">' + sub + '</span>';
 
+                var notes = [];
+                if (state.notice) notes.push(state.notice);
+                if (state.merge === 'group') {
+                    var hasHw = false;
+                    state.rows.forEach(function (r) { if (r.name === HUAWEI.name) hasHw = true; });
+                    var dup = [];
+                    if (state.caliber === 'both') dup.push('合资双计');
+                    if (hasHw) dup.push('华为系叠加');
+                    if (dup.length) {
+                        notes.push(dup.join(' + ') + '：同一批车计入多个集团，合计大于全市场');
+                    }
+                }
                 var notice = $('notice');
-                notice.hidden = !state.notice;
-                notice.textContent = state.notice || '';
+                notice.hidden = !notes.length;
+                notice.textContent = notes.join('；');
             }
 
             function renderStats() {
                 var rows = state.rows;
                 var raw = state.raw || { order: [] };
-                var total = 0, top10 = 0;
-                rows.forEach(function (r) { total += r.count; });
+                var sumRows = 0, top10 = 0;
+                rows.forEach(function (r) { sumRows += r.count; });
                 rows.slice(0, 10).forEach(function (r) { top10 += r.count; });
+                // 双计口径下集团合计会大于全市场，占比一律以 marketTotal 作分母
+                var total = state.marketTotal || sumRows;
+                var isDouble = state.merge === 'group' && state.caliber === 'both';
+                var shareJv = total ? Math.round((state.jvTotal || 0) / total * 1000) / 10 : 0;
+                // 集团榜里合资双计 + 华为系叠加，合计会大于全市场
+                var overCount = sumRows > total + 1;
 
                 var brands = {};
                 (raw.order || []).forEach(function (k) {
@@ -1882,7 +2129,7 @@
                         label: '累计销量',
                         icon: '<rect x="3" y="12" width="4" height="9" rx="1"></rect><rect x="10" y="7" width="4" height="14" rx="1"></rect><rect x="17" y="3" width="4" height="18" rx="1"></rect>',
                         value: '<div class="value">' + num(total) + '</div>',
-                        sub: '辆 · TOP10 占 ' + share + '%'
+                        sub: overCount ? '辆 · 归属合计 ' + num(sumRows) : '辆 · TOP10 占 ' + share + '%'
                     },
                     {
                         label: labelCount,
@@ -1896,10 +2143,16 @@
                         value: '<div class="value small">' + esc(top ? top.name : '—') + '</div>',
                         sub: top ? num(top.count) + ' 辆' : '暂无数据'
                     },
-                    {
+                    isDouble ? {
+                        label: '合资占比',
+                        icon: '<circle cx="9" cy="12" r="6"></circle><circle cx="15" cy="12" r="6"></circle>',
+                        value: '<div class="value">' + shareJv.toFixed(1) + '<span style="font-size:15px;font-weight:600">%</span></div>',
+                        sub: '合资厂商销量 / 全市场',
+                        bar: shareJv
+                    } : {
                         label: '头部集中度',
                         icon: '<circle cx="12" cy="12" r="9"></circle><path d="M12 3v9l6.4 6.4"></path>',
-                        value: '<div class="value">' + share + '<span style="font-size:15px;font-weight:600">%</span></div>',
+                        value: '<div class="value">' + share.toFixed(1) + '<span style="font-size:15px;font-weight:600">%</span></div>',
                         sub: 'TOP10 ' + unit + '销量占比',
                         bar: share
                     }
@@ -1975,7 +2228,7 @@
                             state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
                         } else {
                             state.sortKey = key;
-                            state.sortDir = key === 'count' ? 'desc' : 'asc';
+                            state.sortDir = (key === 'count' || key === 'models' || key === 'brandCount') ? 'desc' : 'asc';
                         }
                         renderHead();
                         renderBody();
@@ -1994,6 +2247,7 @@
                             hay += ' ' + r.brandList.join(' ');
                             r.brandList.forEach(function (b) { hay += ' ' + aliasTextOf(b); });
                         }
+                        if (r.subList && r.subList.length) hay += ' ' + r.subList.join(' ');
                         return hay.toLowerCase().indexOf(kw) > -1;
                     });
                 }
@@ -2031,13 +2285,15 @@
                 var rows = visibleRows();
                 state.viewRows = rows;
                 var max = 1;
-                var total = 0;
+                var sumRows = 0;
                 state.rows.forEach(function (r) {
                     if (r.count > max) max = r.count;
-                    total += r.count;
+                    sumRows += r.count;
                 });
+                var total = state.marketTotal || sumRows;
                 var count = state.rows.length;
 
+                var grouped = state.merge === 'group';
                 var isNone = state.merge === 'none';
                 var showTrend = isNone && state.mode === 'month';
                 $('tbody').innerHTML = rows.map(function (r, i) {
@@ -2065,11 +2321,11 @@
                         tds += '<td><span class="series"><span class="name">' + esc(r.name) + '</span>' +
                             (subText ? '<span class="sub-name">' + esc(subText) + '</span>' : '') +
                             '</span></td>';
-                        if (state.merge === 'group') {
+                        if (grouped) {
                             tds += '<td class="col-brands"><span class="muted-num tip-trigger" data-tip="brands" data-row="' + i + '">' + num(r.brandCount) + ' 个</span></td>';
                         }
                         var modelCell = '<span class="muted-num tip-trigger" data-tip="models" data-row="' + i + '">' + num(r.models) + ' 款</span>';
-                        if (state.merge === 'group') {
+                        if (grouped) {
                             modelCell += '<i class="m-brands tip-trigger" data-tip="brands" data-row="' + i + '">' + num(r.brandCount) + ' 品牌</i>';
                         }
                         tds += '<td class="col-models">' + modelCell + '</td>';
@@ -2127,7 +2383,21 @@
                 items.forEach(function (x) {
                     html += '<span class="tip-chip">' + esc(x.name) + '<i>' + num(x.count) + '</i></span>';
                 });
-                return html + '</div></div>';
+                html += '</div>';
+
+                // 厂商构成：合资品牌在这一层才看得出归属（上汽大众 / 一汽-大众）
+                var subs = (r.subList || []).map(function (s) {
+                    return { name: s, count: r.subCounts[s] || 0 };
+                }).sort(function (a, b) { return b.count - a.count; });
+                if (subs.length) {
+                    html += '<div class="tip-sub"><div class="tip-sub-head">按厂商</div>';
+                    subs.forEach(function (x) {
+                        html += '<div class="tip-item"><span>' + esc(x.name) +
+                            (JV[x.name] ? '<em class="jv-tag">合资</em>' : '') + '</span><i>' + num(x.count) + '</i></div>';
+                    });
+                    html += '</div>';
+                }
+                return html + '</div>';
             }
 
             function tipModelGroupHtml(label, items) {
@@ -2233,15 +2503,19 @@
             function exportCsv() {
                 var rows = visibleRows();
                 var isNone = state.merge === 'none';
+                var isGroup = state.merge === 'group';
+                var caliberText = state.caliber === 'both' ? '双计'
+                    : state.caliber === 'local' ? '中方' : '品牌方';
                 var head = isNone ? ['排名', '车系', '级别', '品牌', '厂商', '指导价', '销量']
-                    : state.merge === 'group' ? ['排名', '集团', '在榜品牌', '在榜车型', '销量']
+                    : isGroup ? ['排名', '集团', '口径', '在榜品牌', '在榜厂商', '在榜车型', '销量']
                         : ['排名', state.merge === 'brand_name' ? '品牌' : '厂商', '在榜车型', '销量'];
                 var lines = [head.join(',')];
                 rows.forEach(function (r) {
                     var cells = isNone
                         ? [r.rank, r.series, r.level, r.brand, r.sub, r.price, r.count]
-                        : state.merge === 'group'
-                            ? [r.rank, r.name, (r.brandList || []).join('/'), r.models, r.count]
+                        : isGroup
+                            ? [r.rank, r.name, caliberText, (r.brandList || []).join('/'),
+                                (r.subList || []).join('/'), r.models, r.count]
                             : [r.rank, r.name, r.models, r.count];
                     lines.push(cells.map(function (v) {
                         v = String(v == null ? '' : v);
@@ -2377,6 +2651,15 @@
                 }
             });
 
+            // 合资归属口径：品牌方 / 中方 / 双计
+            bindSeg('caliberSeg', 'caliber', function () {
+                if (state.raw) {
+                    state.sortKey = 'count';
+                    state.sortDir = 'desc';
+                    render();
+                }
+            });
+
             var timer = null;
             $('q').addEventListener('input', function () {
                 var v = this.value;
@@ -2396,21 +2679,45 @@
             function renderCaliber() {
                 var brands = 0;
                 GROUPS.forEach(function (g) { brands += g.brands.length; });
-                $('caliberStat').textContent = GROUPS.length + ' 个集团 · ' + brands + ' 个品牌';
+                var jvList = Object.keys(JV);
+                $('caliberStat').textContent = GROUPS.length + ' 个集团 · ' + brands + ' 个品牌 · ' + jvList.length + ' 家合资厂商';
 
-                var tip = '合资公司销量计入外方母集团：上汽大众 / 一汽-大众 → 大众集团，广汽丰田 / 一汽丰田 → 丰田，' +
-                    '上汽通用别克 → 通用汽车，因此中方集团只统计自主品牌。同一品牌的历史不同写法（MG / 名爵、AITO / AITO问界 等）已合并。';
+                var tip = '合资公司（上汽大众、一汽丰田、广汽本田等）的销量同时属于品牌方集团与中方集团，顶部可在「品牌方 / 中方 / 双计」间切换：' +
+                    '品牌方与中方各自是单归属，合计等于全市场；双计会把合资算两次。' +
+                    '华为系是叠加归属，与所属集团重复计入。同一品牌的历史写法（MG / 名爵、AITO / AITO问界 等）已合并。';
 
-                $('caliberList').innerHTML = '<div class="caliber-tip">' + esc(tip) + '</div>' +
-                    GROUPS.map(function (g) {
+                var jvHtml = jvList.map(function (sub) {
+                    var j = JV[sub];
+                    return '<div class="jv-row">' +
+                        '<b>' + esc(sub) + '</b>' +
+                        '<span><i class="jv-out">' + esc(j.out) + '</i><em>⇄</em><i class="jv-in">' + esc(j.in) + '</i></span>' +
+                        '<u>' + esc(j.stake) + '</u>' +
+                        '</div>';
+                }).join('');
+
+                var groupHtml = GROUPS.map(function (g) {
                     return '<div class="cal-row">' +
-                        '<div class="cal-head"><b>' + esc(g.name) + '</b><span>' + g.brands.length + ' 个品牌</span></div>' +
-                        '<div class="cal-brands">' + g.brands.map(function (b) {
+                        '<div class="cal-head"><b>' + esc(g.name) + '</b><span>' +
+                        (g.brands.length ? g.brands.length + ' 个品牌' : '无自有品牌') + '</span></div>' +
+                        (g.brands.length ? '<div class="cal-brands">' + g.brands.map(function (b) {
                             return '<i>' + esc(b) + '</i>';
-                        }).join('') + '</div>' +
+                        }).join('') + '</div>' : '') +
                         (g.note ? '<div class="cal-note">' + esc(g.note) + '</div>' : '') +
                         '</div>';
                 }).join('');
+
+                var hwHtml = '<div class="cal-row">' +
+                    '<div class="cal-head"><b>' + esc(HUAWEI.name) + '</b><span>' + HUAWEI.brands.length + ' 个品牌</span></div>' +
+                    '<div class="cal-brands">' + HUAWEI.brands.map(function (b) {
+                        return '<i>' + esc(b) + '</i>';
+                    }).join('') + '</div>' +
+                    '<div class="cal-note">' + esc(HUAWEI.note) + '</div>' +
+                    '</div>';
+
+                $('caliberList').innerHTML = '<div class="caliber-tip">' + esc(tip) + '</div>' +
+                    '<div class="cal-sec">合资厂商 · 双向归属</div>' + jvHtml +
+                    '<div class="cal-sec">叠加归属 · 与所属集团重复计入</div>' + hwHtml +
+                    '<div class="cal-sec">集团自有品牌</div>' + groupHtml;
             }
 
             // ---------- 启动 ----------

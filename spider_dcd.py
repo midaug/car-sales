@@ -154,17 +154,81 @@ def readJs(path, key):
         return None
 
 
+def dataSig(data):
+    """月度数据的指纹：只取 (series_id, count)，用来判断两个月是不是同一份数据"""
+    if not isinstance(data, dict):
+        return None
+    pairs = []
+    for k, v in data.items():
+        if k == 'order' or not isinstance(v, dict):
+            continue
+        pairs.append((str(v.get('series_id')), v.get('count')))
+    return tuple(sorted(pairs))
+
+
+def neighborSig(dir, dateStr, car_type, step):
+    """读取相邻月份（step=-1 上个月，step=+1 下个月）已存数据的指纹，没有则返回 None"""
+    try:
+        y, m = int(dateStr[:4]), int(dateStr[4:])
+        m += step
+        if m < 1:
+            y, m = y - 1, 12
+        elif m > 12:
+            y, m = y + 1, 1
+        ym = '{0:04d}{1:02d}'.format(y, m)
+        p = '{0}/{1}/{2}/{3}.js'.format(data_path, y, '{0:02d}'.format(m), car_type)
+        if not os.path.exists(p):
+            return None
+        d = readJs(p, '{0}_{1}'.format(car_type, ym))
+        return dataSig(d)
+    except Exception:
+        return None
+
+
+_latest_month = []
+_latest_sig = {}
+
+
+def latestMonth():
+    """数据目录里最新的一个月（源站把历史月回退时，返回的就是这个月的数据）"""
+    if not _latest_month:
+        best = None
+        for year in sorted(os.listdir(data_path)):
+            yp = os.path.join(data_path, year)
+            if not os.path.isdir(yp) or not year.isdigit():
+                continue
+            for m in sorted(os.listdir(yp)):
+                if os.path.isdir(os.path.join(yp, m)) and os.path.exists(os.path.join(yp, m, 'car_all.js')):
+                    ym = year + m
+                    if best is None or ym > best:
+                        best = ym
+        _latest_month.append(best)
+    return _latest_month[0]
+
+
+def latestSig(dateStr, car_type):
+    """最新月份已存数据的指纹；dateStr 本身就是最新月时返回 None"""
+    ym = latestMonth()
+    if not ym or ym == dateStr:
+        return None
+    if car_type not in _latest_sig:
+        p = '{0}/{1}/{2}/{3}.js'.format(data_path, ym[:4], ym[4:], car_type)
+        _latest_sig[car_type] = dataSig(readJs(p, '{0}_{1}'.format(car_type, ym))) if os.path.exists(p) else None
+    return _latest_sig[car_type]
+
+
 def requestCarData(url, jsPath, dir, dateStr, car_type):
     """下载一个月的数据（接口单页最多 100 条，需要按 offset 翻页）。
     只保留页面用得到的字段，仓库体积能小一半多。
-    返回 (dataStr, created)，失败返回 (None, False)"""
+    返回 (dataStr, created, status)，status 为 ok / stale / fail：
+      stale = 源站把这个月回退成了最新月的数据（和相邻月完全一致），不能写入"""
     key = '{0}_{1}'.format(car_type, dateStr)
     # 当文件存在时直接读取，避免重复下载
     if os.path.exists(jsPath):
         data = readJs(jsPath, key)
         if data is not None:
             print('info dataPath exists: {0}'.format(jsPath))
-            return json.dumps(data, ensure_ascii=False), False
+            return json.dumps(data, ensure_ascii=False), False, 'ok'
         print('warn unreadable data file, re-download: {0}'.format(jsPath))
 
     order = []
@@ -174,7 +238,7 @@ def requestCarData(url, jsPath, dir, dateStr, car_type):
         carList = requestPage(url.format(month=dateStr, offset=offset, count=page_size), dateStr)
         if carList is None:
             # 翻页中途失败就整月放弃，避免保存残缺数据
-            return None, False
+            return None, False, 'fail'
         for carSales in carList:
             item = slimCar(carSales)
             if 'series_id' not in item:
@@ -190,34 +254,65 @@ def requestCarData(url, jsPath, dir, dateStr, car_type):
 
     if not order:
         print('warn month={0} 没有返回任何数据'.format(dateStr))
+
+    # 源站对太早的月份会直接回退成「最新月」的数据（内容与最新月或相邻月一模一样）。
+    # 这种数据写进去会污染历史，直接丢弃并让调用方跳过该月。
+    sig = dataSig(data)
+    refs = [
+        (neighborSig(dir, dateStr, car_type, -1), '上个月'),
+        (neighborSig(dir, dateStr, car_type, 1), '下个月'),
+        (latestSig(dateStr, car_type), '最新月份'),
+    ]
+    for rsig, name in refs:
+        if sig is not None and rsig is not None and sig == rsig:
+            print('ERROR month={0} 返回内容与{1}完全相同，判定为源站回退到最新月，已跳过'.format(dateStr, name))
+            return None, False, 'stale'
+
     data['order'] = order
     dataStr = json.dumps(data, ensure_ascii=False)
     mkdir(dir)
     wFile(jsWrap(key, dataStr), jsPath)
     print('info month={0} 共 {1} 条'.format(dateStr, len(order)))
-    return dataStr, True
+    return dataStr, True, 'ok'
 
 
 def start(url, dateStr, car_type):
-    """抓取一月一类数据，成功返回 True"""
+    """抓取一月一类数据，返回 ok / stale / fail"""
     fileDir = '{dir}/{year}/{month}'.format(dir=data_path, year=dateStr[:4], month=dateStr[4:6])
     jsPath = '{dir}/{type}.js'.format(dir=fileDir, type=car_type)
-    carData, created = requestCarData(url, jsPath, fileDir, dateStr, car_type)
-    if carData is None:
-        return False
-    return True
+    carData, created, status = requestCarData(url, jsPath, fileDir, dateStr, car_type)
+    return status
+
+
+def neighborEnergy(dir, dateStr, step):
+    """读取相邻月份的能源映射，没有则返回 None"""
+    try:
+        y, m = int(dateStr[:4]), int(dateStr[4:])
+        m += step
+        if m < 1:
+            y, m = y - 1, 12
+        elif m > 12:
+            y, m = y + 1, 1
+        ym = '{0:04d}{1:02d}'.format(y, m)
+        p = '{0}/{1}/{2}/energy.js'.format(data_path, y, '{0:02d}'.format(m))
+        if not os.path.exists(p):
+            return None
+        d = readJs(p, 'energy_{0}'.format(ym))
+        return d if isinstance(d, dict) else None
+    except Exception:
+        return None
 
 
 def requestEnergyMap(dateStr, dir):
     """抓取一个月的能源类型映射 {series_id: 1|2|3|4}，纯电/插混/增程/双动力分开取。
-    只存 id 和类型，一个月大约 4KB。返回 (data, created)"""
+    只存 id 和类型，一个月大约 4KB。返回 (data, created, status)"""
     jsPath = '{dir}/energy.js'.format(dir=dir)
     key = 'energy_{0}'.format(dateStr)
     if os.path.exists(jsPath):
         cached = readJs(jsPath, key)
         if isinstance(cached, dict):
             print('info dataPath exists: {0}'.format(jsPath))
-            return cached, False
+            return cached, False, 'ok'
         print('warn unreadable data file, re-download: {0}'.format(jsPath))
 
     result = {}
@@ -227,7 +322,7 @@ def requestEnergyMap(dateStr, dir):
             carList = requestPage(energy_url.format(month=dateStr, offset=offset, count=page_size, net=net), dateStr)
             if carList is None:
                 # 中途失败整月放弃，避免存半份映射
-                return None, False
+                return None, False, 'fail'
             for car in carList:
                 series_id = car.get('series_id')
                 if series_id is not None:
@@ -236,22 +331,35 @@ def requestEnergyMap(dateStr, dir):
                 break
             offset += page_size
 
+    # 和相邻月或最新月完全一致说明源站把历史月回退成了当前快照，丢掉
+    refs = [neighborEnergy(dir, dateStr, -1), neighborEnergy(dir, dateStr, 1)]
+    latest = latestMonth()
+    if latest and latest != dateStr:
+        p = '{0}/{1}/{2}/energy.js'.format(data_path, latest[:4], latest[4:])
+        d = readJs(p, 'energy_{0}'.format(latest)) if os.path.exists(p) else None
+        if isinstance(d, dict):
+            refs.append(d)
+    for nb in refs:
+        if nb is not None and nb == result:
+            print('ERROR energy month={0} 与相邻月/最新月完全相同，判定为快照回退，已跳过'.format(dateStr))
+            return None, False, 'stale'
+
     mkdir(dir)
     print('info energy month={0} 共 {1} 条'.format(dateStr, len(result)))
-    return result, True
+    return result, True, 'ok'
 
 
 def startEnergy(dateStr):
-    """抓取一个月的能源类型映射，成功返回 True"""
+    """抓取一个月的能源类型映射，返回 ok / stale / fail"""
     fileDir = '{dir}/{year}/{month}'.format(dir=data_path, year=dateStr[:4], month=dateStr[4:6])
     jsPath = '{0}/energy.js'.format(fileDir)
-    result, created = requestEnergyMap(dateStr, fileDir)
-    if result is None:
-        return False
+    result, created, status = requestEnergyMap(dateStr, fileDir)
+    if status != 'ok':
+        return status
     if created:
         dataStr = json.dumps(result, ensure_ascii=False, sort_keys=True)
         wFile(jsWrap('energy_{0}'.format(dateStr), dataStr), jsPath)
-    return True
+    return 'ok'
 
 
 def mergeYear(car_type):
@@ -347,19 +455,26 @@ if __name__ == "__main__":
     total = 0
     success = 0
     failed = []
+    skipped = []
     month = start_month
     try:
         while month <= end_month:
             for url, car_type in ((car_all_url, 'car_all'), (car_new_energy_url, 'car_new_energy')):
                 total += 1
-                if start(url, month, car_type):
+                status = start(url, month, car_type)
+                if status == 'ok':
                     success += 1
+                elif status == 'stale':
+                    skipped.append('{0}/{1}'.format(car_type, month))
                 else:
                     failed.append('{0}/{1}'.format(car_type, month))
             # 能源类型映射（纯电/插混/增程），只存 series_id -> 类型，体积很小
             total += 1
-            if startEnergy(month):
+            status = startEnergy(month)
+            if status == 'ok':
                 success += 1
+            elif status == 'stale':
+                skipped.append('energy/{0}'.format(month))
             else:
                 failed.append('energy/{0}'.format(month))
             month = datetime.strftime(datetime.strptime(month, format_str) + relativedelta(months=1), format_str)
@@ -368,6 +483,8 @@ if __name__ == "__main__":
         mergeYearEnergy()
         writeLastDate()
         print('Finished, {0}/{1} success'.format(success, total))
+        if skipped:
+            print('Skipped (源站已不提供该月，返回的是最新月数据): {0}'.format(', '.join(skipped)))
     except Exception:
         import traceback
         traceback.print_exc()

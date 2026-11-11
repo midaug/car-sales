@@ -1786,6 +1786,7 @@
                 notice: '',
                 marketTotal: 0,
                 jvTotal: 0,
+                brandCount: 0,
                 token: 0
             };
 
@@ -2063,13 +2064,17 @@
                 // 市场合计：双计口径下集团合计会大于它，占比一律以它为分母
                 var marketTotal = 0;
                 var jvTotal = 0;
+                var brandsSeen = {};
                 list.forEach(function (it) {
                     var c = Number(it.count) || 0;
                     marketTotal += c;
                     if (groupInfoOf(it).jv) jvTotal += c;
+                    var b = brandOf(it.brand_name);
+                    if (b) brandsSeen[b] = 1;
                 });
                 state.marketTotal = marketTotal;
                 state.jvTotal = jvTotal;
+                state.brandCount = Object.keys(brandsSeen).length;
 
                 if (merge === 'none') {
                     return list.map(function (it) {
@@ -2230,7 +2235,8 @@
                     var b = it ? brandOf(it.brand_name) : '';
                     if (b) brands[b] = 1;
                 });
-                var brandCount = Object.keys(brands).length;
+                // 级别/价格是本地筛选，raw 里没经过滤，用 buildRows 统计的品牌数
+                var brandCount = state.brandCount || Object.keys(brands).length;
                 var share = total ? Math.round(top10 / total * 1000) / 10 : 0;
                 var top = rows[0];
 
